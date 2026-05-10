@@ -8,7 +8,8 @@ loadEnvFile();
 const PORT = Number(process.env.PORT || 4176);
 const HOST = process.env.HOST || "127.0.0.1";
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-const GEMINI_MAX_OUTPUT_TOKENS = Number(process.env.GEMINI_MAX_OUTPUT_TOKENS || 1024);
+const GEMINI_MAX_OUTPUT_TOKENS = Number(process.env.GEMINI_MAX_OUTPUT_TOKENS || 2048);
+const GEMINI_THINKING_BUDGET = Number(process.env.GEMINI_THINKING_BUDGET || 0);
 const SUPABASE_TABLE = process.env.SUPABASE_TABLE || "freedom_profiles";
 const ROOT = __dirname;
 
@@ -185,6 +186,9 @@ async function handleChat(request, response) {
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
+          thinkingConfig: {
+            thinkingBudget: GEMINI_THINKING_BUDGET,
+          },
         },
       }),
     });

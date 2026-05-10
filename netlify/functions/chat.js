@@ -2,6 +2,7 @@ const {
   ADVISER_INSTRUCTIONS,
   GEMINI_MAX_OUTPUT_TOKENS,
   GEMINI_MODEL,
+  GEMINI_THINKING_BUDGET,
   getGeminiApiKey,
   getGeminiOutputText,
   json,
@@ -43,6 +44,9 @@ exports.handler = async (event) => {
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
+          thinkingConfig: {
+            thinkingBudget: GEMINI_THINKING_BUDGET,
+          },
         },
       }),
     });
