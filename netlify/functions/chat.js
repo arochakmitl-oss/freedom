@@ -1,5 +1,6 @@
 const {
   ADVISER_INSTRUCTIONS,
+  GEMINI_MAX_OUTPUT_TOKENS,
   GEMINI_MODEL,
   getGeminiApiKey,
   getGeminiOutputText,
@@ -41,7 +42,7 @@ exports.handler = async (event) => {
         contents: toGeminiContents(input),
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 420,
+          maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
         },
       }),
     });
@@ -54,8 +55,10 @@ exports.handler = async (event) => {
     }
 
     const reply = getGeminiOutputText(data);
+    const finishReason = data.candidates?.[0]?.finishReason || "";
     return json(200, {
       reply: reply || "ขอโทษครับ ตอนนี้ฉันยังสรุปคำตอบไม่ได้ ลองเล่าให้สั้นลงอีกนิดได้ไหม",
+      finishReason,
     });
   } catch (error) {
     return json(500, {

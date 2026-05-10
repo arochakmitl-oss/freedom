@@ -9,6 +9,7 @@
 ```bash
 GEMINI_API_KEY=your-gemini-api-key
 GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MAX_OUTPUT_TOKENS=1024
 PORT=4176
 HOST=127.0.0.1
 ```
@@ -40,6 +41,7 @@ http://127.0.0.1:4176
 ```text
 GEMINI_API_KEY=your-gemini-api-key
 GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MAX_OUTPUT_TOKENS=1024
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_TABLE=freedom_profiles

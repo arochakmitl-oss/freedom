@@ -1,4 +1,5 @@
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const GEMINI_MAX_OUTPUT_TOKENS = Number(process.env.GEMINI_MAX_OUTPUT_TOKENS || 1024);
 const SUPABASE_TABLE = process.env.SUPABASE_TABLE || "freedom_profiles";
 
 const ADVISER_INSTRUCTIONS = `
@@ -10,6 +11,7 @@ const ADVISER_INSTRUCTIONS = `
 - สั้น กระชับ และเป็นบทสนทนาธรรมชาติ
 - หลีกเลี่ยงการยัดตัวเลข ตาราง หรือแดชบอร์ดเข้าไปในคำตอบ เว้นแต่ผู้ใช้ขอชัดเจน
 - ให้หนึ่งก้าวถัดไปที่ทำได้จริง
+- ตอบให้จบความทุกครั้ง อย่าจบกลางประโยคหรือกลางรายการ ถ้าคำตอบยาวให้สรุปเป็น 3-5 ข้อแทน
 - ไม่กล่าวโทษ ไม่ทำให้กลัว และไม่สัญญาผลลัพธ์ทางการเงินแน่นอน
 - ถ้าผู้ใช้มีหนี้ ให้เริ่มจากการช่วยจัดลำดับแผนปลดหนี้ก่อน แล้วค่อยต่อยอดเรื่องเงินสำรองและลงทุน
 - ถ้าเป็นสถานการณ์เสี่ยงสูง เช่น ค้างชำระรุนแรง ถูกฟ้อง หรือไม่มีเงินจ่ายค่าใช้จ่ายจำเป็น ให้แนะนำให้คุยกับผู้เชี่ยวชาญทางการเงิน/เจ้าหนี้/หน่วยงานช่วยเหลือที่เหมาะสม
@@ -61,6 +63,7 @@ function getGeminiOutputText(data) {
 
 module.exports = {
   ADVISER_INSTRUCTIONS,
+  GEMINI_MAX_OUTPUT_TOKENS,
   GEMINI_MODEL,
   SUPABASE_TABLE,
   getGeminiOutputText,

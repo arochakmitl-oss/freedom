@@ -8,6 +8,7 @@ loadEnvFile();
 const PORT = Number(process.env.PORT || 4176);
 const HOST = process.env.HOST || "127.0.0.1";
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const GEMINI_MAX_OUTPUT_TOKENS = Number(process.env.GEMINI_MAX_OUTPUT_TOKENS || 1024);
 const SUPABASE_TABLE = process.env.SUPABASE_TABLE || "freedom_profiles";
 const ROOT = __dirname;
 
@@ -65,6 +66,7 @@ const ADVISER_INSTRUCTIONS = `
 - สั้น กระชับ และเป็นบทสนทนาธรรมชาติ
 - หลีกเลี่ยงการยัดตัวเลข ตาราง หรือแดชบอร์ดเข้าไปในคำตอบ เว้นแต่ผู้ใช้ขอชัดเจน
 - ให้หนึ่งก้าวถัดไปที่ทำได้จริง
+- ตอบให้จบความทุกครั้ง อย่าจบกลางประโยคหรือกลางรายการ ถ้าคำตอบยาวให้สรุปเป็น 3-5 ข้อแทน
 - ไม่กล่าวโทษ ไม่ทำให้กลัว และไม่สัญญาผลลัพธ์ทางการเงินแน่นอน
 - ถ้าผู้ใช้มีหนี้ ให้เริ่มจากการช่วยจัดลำดับแผนปลดหนี้ก่อน แล้วค่อยต่อยอดเรื่องเงินสำรองและลงทุน
 - ถ้าเป็นสถานการณ์เสี่ยงสูง เช่น ค้างชำระรุนแรง ถูกฟ้อง หรือไม่มีเงินจ่ายค่าใช้จ่ายจำเป็น ให้แนะนำให้คุยกับผู้เชี่ยวชาญทางการเงิน/เจ้าหนี้/หน่วยงานช่วยเหลือที่เหมาะสม
@@ -182,7 +184,7 @@ async function handleChat(request, response) {
         contents: toGeminiContents(input),
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 420,
+          maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
         },
       }),
     });
@@ -196,8 +198,10 @@ async function handleChat(request, response) {
     }
 
     const reply = getGeminiOutputText(data);
+    const finishReason = data.candidates?.[0]?.finishReason || "";
     sendJson(response, 200, {
       reply: reply || "ขอโทษครับ ตอนนี้ฉันยังสรุปคำตอบไม่ได้ ลองเล่าให้สั้นลงอีกนิดได้ไหม",
+      finishReason,
     });
   } catch (error) {
     sendJson(response, 500, {
