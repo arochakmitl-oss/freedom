@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <title>Freedom</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.hugeicons.com/font/hgi-stroke-rounded.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="styles.css?v=50" />
+  </head>
+  <body>
+    <main class="stage">
+      <section class="phone" aria-label="ต้นแบบแอปมือถือ Freedom">
+        <div class="aurora aurora-one"></div>
+        <div class="aurora aurora-two"></div>
+        <div class="noise"></div>
+
+        <header class="topbar chat-topbar">
+          <button class="mode-toggle" id="modeToggle" type="button" aria-label="สลับ desktop/mobile mode">
+            <span class="mode-tab active"><i class="hgi-stroke hgi-smart-phone-01 ui-icon" aria-hidden="true"></i></span>
+            <span class="mode-tab"><i class="hgi-stroke hgi-computer ui-icon" aria-hidden="true"></i></span>
+          </button>
+          <div>
+            <p class="eyebrow">Freedom</p>
+            <h1 id="screenTitle">ผู้ช่วยการเงินส่วนตัว</h1>
+          </div>
+          <button class="profile-ring" id="profileButton" type="button" aria-label="ระดับสุขภาพการเงิน Survival" hidden>
+            <i class="hgi-stroke hgi-heart-check ui-icon" aria-hidden="true"></i>
+            <span>S</span>
+          </button>
+        </header>
+
+        <section class="content" id="appContent"></section>
+        <section class="chat-dock" id="chatDock" aria-label="ช่องพิมพ์แชท" hidden></section>
+      </section>
+    </main>
+
+    <script src="app.js?v=32"></script>
+  </body>
+</html>
