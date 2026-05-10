@@ -221,19 +221,10 @@ body[data-mode="desktop"] .chat-dock {
 .profile-ring[data-level="freedom"] { --level-color: #ffffff; }
 .profile-ring[data-level="legacy"] { --level-color: #ffe8a3; }
 
-.profile-ring span {
-  grid-area: 1 / 1;
-  margin-top: 15px;
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1;
-}
-
 .profile-ring .ui-icon {
   grid-area: 1 / 1;
   width: 18px;
   height: 18px;
-  margin-bottom: 8px;
   color: var(--level-color);
 }
 
@@ -1148,13 +1139,44 @@ body[data-mode="desktop"] .health-card {
 .next-level ul {
   display: grid;
   gap: 7px;
-  padding-left: 18px;
+  padding-left: 0;
   color: var(--muted);
+  list-style: none;
 }
 
 .next-level strong {
   color: var(--text);
   font-size: 15px;
+}
+
+.next-level li {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 7px;
+  align-items: start;
+  line-height: 1.45;
+}
+
+.next-level li.done {
+  color: var(--emerald);
+}
+
+.checkmark {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: transparent;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.next-level li.done .checkmark {
+  background: rgba(80, 240, 173, 0.18);
+  color: var(--emerald);
+  box-shadow: 0 0 14px rgba(80, 240, 173, 0.18);
 }
 
 .debt-dashboard {

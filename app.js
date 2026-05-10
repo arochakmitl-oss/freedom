@@ -33,6 +33,45 @@ const onboardingQuestions = [
   },
 ];
 
+const checkpointRules = {
+  survival: [
+    ["จ่ายขั้นต่ำครบ", "จ่ายขั้นต่ำได้ครบ", "จ่ายขั้นต่ำแล้ว", "ขั้นต่ำครบ"],
+    ["ไม่มี missed", "ไม่ missed", "ไม่มีค้างจ่าย", "ไม่ค้างจ่าย", "ไม่พลาดจ่าย", "จ่ายตรงเวลา"],
+    ["พอใช้ถึงสิ้นเดือน", "เงินพอถึงสิ้นเดือน", "ไม่ติดลบปลายเดือน", "ใช้ถึงสิ้นเดือน"],
+    ["คุมรายจ่าย", "ควบคุมรายจ่าย", "ลดรายจ่าย", "ทำงบรายจ่าย", "บันทึกรายจ่าย"],
+  ],
+  recovery: [
+    ["จ่ายมากกว่าขั้นต่ำ", "โปะเพิ่ม", "จ่ายเกินขั้นต่ำ", "จ่ายหนี้เพิ่ม"],
+    ["เริ่มออม", "มีเงินออม", "ออมเงิน", "เก็บเงิน"],
+    ["มีเงินเหลือปลายเดือน", "เงินเหลือปลายเดือน", "มี surplus", "เหลือเงิน"],
+    ["ไม่สร้างหนี้เพิ่ม", "ไม่ก่อหนี้เพิ่ม", "หนี้ไม่เพิ่ม", "หยุดใช้บัตร"],
+  ],
+  balance: [
+    ["emergency fund", "เงินสำรอง 3 เดือน", "เงินสำรอง 6 เดือน", "เงินสำรองฉุกเฉิน"],
+    ["หนี้ดอกสูงลดลง", "หนี้ลดลง", "ยอดหนี้ลด", "ปิดหนี้ดอกสูง"],
+    ["passive income", "รายได้เสริม", "รายได้ทางอื่น", "รายได้เพิ่ม"],
+    ["monthly surplus", "เงินเหลือต่อเนื่อง", "มีเงินเหลือทุกเดือน", "เหลือเงินทุกเดือน"],
+  ],
+  growth: [
+    ["passive income ช่วย", "รายได้เสริมช่วย", "รายได้เสริมจ่าย", "รายได้เสริมครอบคลุมบางส่วน"],
+    ["หนี้ดอกสูงเกือบหมด", "หนี้เกือบหมด", "ใกล้ปิดหนี้", "ปิดหนี้เกือบหมด"],
+    ["ลงทุนต่อเนื่อง", "investment habit", "ลงทุนทุกเดือน", "เริ่มลงทุนสม่ำเสมอ"],
+    ["เงินสำรองแข็งแรง", "เงินสำรองครบ", "เงินสำรอง 6 เดือน", "สำรองมั่นคง"],
+  ],
+  freedom: [
+    ["passive income ครอบคลุม", "รายได้เสริมครอบคลุมค่าใช้จ่าย", "รายได้ลงทุนครอบคลุม"],
+    ["wealth system", "ระบบทรัพย์สิน", "ระบบลงทุน", "ระบบการเงินระยะยาว"],
+    ["financial flexibility", "ยืดหยุ่นทางการเงิน", "เลือกงานได้", "มีทางเลือก"],
+    ["ทบทวนระบบเงิน", "ทบทวนการลงทุน", "ทบทวนความเสี่ยง", "รีวิวพอร์ต"],
+  ],
+  legacy: [
+    ["passive income ครอบคลุม", "รายได้ลงทุนครอบคลุม", "เงินทำงานแทนเวลา"],
+    ["ดูแลทรัพย์สิน", "จัดการความเสี่ยง", "แผนระยะยาว", "แผนทรัพย์สิน"],
+    ["legacy goal", "เป้าหมายส่งต่อ", "ส่งต่อทรัพย์สิน", "สร้าง impact"],
+    ["ส่งต่อความรู้", "ช่วยครอบครัว", "ส่งต่อความมั่นคง", "แบ่งปันความรู้"],
+  ],
+};
+
 let users = loadUsers();
 let currentUser = null;
 let profile = null;
@@ -84,7 +123,7 @@ function updateChrome() {
     profileButton.hidden = !(profile && profile.known);
     profileButton.dataset.level = health.slug;
     profileButton.style.setProperty("--profile-progress", `${health.progress}%`);
-    profileButton.innerHTML = `${iconMarkup(health.icon)}<span>${health.short}</span>`;
+    profileButton.innerHTML = iconMarkup(health.icon);
     profileButton.setAttribute("aria-label", `ระดับสุขภาพการเงิน ${health.level}`);
   }
 }
@@ -159,7 +198,12 @@ function profileHealthTabMarkup(health, profileLines) {
       <p class="label">ก้าวสู่ระดับถัดไป</p>
       <strong>${escapeHtml(health.nextLevel)}</strong>
       <ul>
-        ${health.conditions.map((condition) => `<li>${escapeHtml(condition)}</li>`).join("")}
+        ${health.conditions.map((condition, index) => `
+          <li class="${health.completedConditions[index] ? "done" : ""}">
+            <span class="checkmark">${health.completedConditions[index] ? "✓" : ""}</span>
+            <span>${escapeHtml(condition)}</span>
+          </li>
+        `).join("")}
       </ul>
     </section>
     <section class="health-block">
@@ -632,6 +676,8 @@ function getOnboardingCompleteMessage() {
 
 function submitMessage(text) {
   conversation.push({ role: "user", text });
+  const checkpointUpdated = updateFinancialCheckpoints(text);
+  if (checkpointUpdated) saveUsers();
   isThinking = true;
   render();
   keepChatAtBottom();
@@ -801,7 +847,43 @@ function healthLevelData(level, progress) {
       conditions: ["รักษา passive income ให้ครอบคลุมค่าใช้จ่ายหลัก", "ดูแลระบบทรัพย์สินและความเสี่ยงระยะยาว", "ออกแบบ legacy goal ที่สอดคล้องกับชีวิต", "ส่งต่อความรู้หรือความมั่นคงในแบบที่คุณเลือก"],
     },
   };
-  return { progress: Math.max(0, Math.min(100, Math.round(progress))), ...data[level] };
+  const health = data[level];
+  const completedConditions = getCompletedConditions(health.slug, health.conditions.length);
+  const completedCount = completedConditions.filter(Boolean).length;
+  const checkpointBoost = completedCount * 8;
+  return {
+    progress: Math.max(0, Math.min(100, Math.round(progress + checkpointBoost))),
+    completedConditions,
+    ...health,
+  };
+}
+
+function getCompletedConditions(slug, count) {
+  const saved = profile?.checkpoints?.[slug] || {};
+  return Array.from({ length: count }, (_, index) => Boolean(saved[index]));
+}
+
+function updateFinancialCheckpoints(text) {
+  if (!profile?.known || !text) return false;
+  const currentHealth = getFinancialHealth();
+  const rules = checkpointRules[currentHealth.slug];
+  if (!rules) return false;
+
+  const normalizedText = String(text).toLowerCase();
+  profile.checkpoints = profile.checkpoints || {};
+  profile.checkpoints[currentHealth.slug] = profile.checkpoints[currentHealth.slug] || {};
+
+  let changed = false;
+  rules.forEach((keywords, index) => {
+    if (profile.checkpoints[currentHealth.slug][index]) return;
+    const matched = keywords.some((keyword) => normalizedText.includes(keyword.toLowerCase()));
+    if (matched) {
+      profile.checkpoints[currentHealth.slug][index] = true;
+      changed = true;
+    }
+  });
+
+  return changed;
 }
 
 function getFinancialProfileLines() {
@@ -991,6 +1073,7 @@ function normalizeProfile(storedProfile, fallbackPin = "") {
     known: Boolean(safeProfile.known),
     onboarding: safeProfile.onboarding && typeof safeProfile.onboarding === "object" ? safeProfile.onboarding : {},
     debts: Array.isArray(safeProfile.debts) ? safeProfile.debts : [],
+    checkpoints: safeProfile.checkpoints && typeof safeProfile.checkpoints === "object" ? safeProfile.checkpoints : {},
   };
 }
 
