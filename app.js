@@ -148,7 +148,7 @@ function financialHealthModalMarkup() {
 
 function profileHealthTabMarkup(health, profileLines) {
   return `
-    <div class="health-head">
+    <div class="health-head" style="--level-color: ${health.color}">
       <div class="health-orb ${health.slug}">${iconMarkup(health.icon)}</div>
       <div>
         <p class="eyebrow">Ocean Journey</p>
@@ -156,9 +156,19 @@ function profileHealthTabMarkup(health, profileLines) {
         <p class="health-status-copy">${escapeHtml(health.statusIntro)}</p>
       </div>
     </div>
-    <div class="health-meter" aria-label="คะแนนสุขภาพการเงิน ${health.progress} เปอร์เซ็นต์">
+    <div class="health-meter-wrap" style="--level-color: ${health.color}">
+      <div class="health-meter" aria-label="คะแนนสุขภาพการเงิน ${health.progress} เปอร์เซ็นต์">
       <span style="--width: ${health.progress}%"></span>
+      </div>
+      <span class="next-status">${escapeHtml(health.nextLevel)}</span>
     </div>
+    <section class="health-block next-level">
+      <p class="label">ก้าวสู่ระดับถัดไป</p>
+      <strong>${escapeHtml(health.nextLevel)}</strong>
+      <ul>
+        ${health.conditions.map((condition) => `<li>${escapeHtml(condition)}</li>`).join("")}
+      </ul>
+    </section>
     <section class="health-block">
       <p class="label">โปรไฟล์ตอนนี้</p>
       ${profileLines.map((line) => `<div class="health-row"><span>${escapeHtml(line.label)}</span><strong>${escapeHtml(line.value)}</strong></div>`).join("")}
@@ -170,16 +180,6 @@ function profileHealthTabMarkup(health, profileLines) {
     <section class="health-block ocean-journey-block">
       <p class="label">AI adviser focus</p>
       <p>${escapeHtml(health.adviserFocus)}</p>
-    </section>
-    <section class="health-block ocean-journey-block visual-mood">
-      <p class="label">วาฬ AI และทะเลรอบตัว</p>
-      <p>${escapeHtml(health.visualMood)}</p>
-    </section>
-    <section class="health-block next-level">
-      <p class="label">ก้าวสู่ระดับถัดไป: ${health.nextLevel}</p>
-      <ul>
-        ${health.conditions.map((condition) => `<li>${escapeHtml(condition)}</li>`).join("")}
-      </ul>
     </section>
     <button class="primary icon-label" type="button" data-action="restartAssessment">${iconMarkup("target")}<span>เริ่มทำแบบประเมินใหม่</span></button>
   `;
@@ -361,7 +361,7 @@ function iconMarkup(name) {
     wallet: "hgi-wallet-01",
     shield: "hgi-shield-01",
     heartPulse: "hgi-heart-check",
-    seed: "hgi-plant-02",
+    legacy: "hgi-sparkles",
     list: "hgi-task-01",
     target: "hgi-target-02",
   };
@@ -768,6 +768,7 @@ function healthLevelData(level, progress) {
     Survival: {
       level: "Survival Mode",
       slug: "survival",
+      color: "#ff4f6d",
       short: "S",
       icon: "heartPulse",
       nextLevel: "Recovery Mode",
@@ -780,6 +781,7 @@ function healthLevelData(level, progress) {
     Recovery: {
       level: "Recovery Mode",
       slug: "recovery",
+      color: "#49e8ff",
       short: "R",
       icon: "shield",
       nextLevel: "Balance Mode",
@@ -792,6 +794,7 @@ function healthLevelData(level, progress) {
     Balance: {
       level: "Balance Mode",
       slug: "balance",
+      color: "#50f0ad",
       short: "B",
       icon: "target",
       nextLevel: "Growth Mode",
@@ -804,6 +807,7 @@ function healthLevelData(level, progress) {
     Growth: {
       level: "Growth Mode",
       slug: "growth",
+      color: "#9d6cff",
       short: "G",
       icon: "trend",
       nextLevel: "Freedom Mode",
@@ -816,6 +820,7 @@ function healthLevelData(level, progress) {
     Freedom: {
       level: "Freedom Mode",
       slug: "freedom",
+      color: "#ffffff",
       short: "F",
       icon: "sparkles",
       nextLevel: "Legacy Mode",
@@ -829,7 +834,8 @@ function healthLevelData(level, progress) {
       level: "Legacy Mode",
       slug: "legacy",
       short: "L",
-      icon: "seed",
+      icon: "legacy",
+      color: "#ffe8a3",
       nextLevel: "Legacy Mode",
       statusIntro: "นี่คือช่วงที่เงินเริ่มทำงานร่วมกับเวลาและคุณค่าของชีวิต คุณมีพื้นที่ในการสร้าง impact และส่งต่อความมั่นคงอย่างตั้งใจ",
       meaning: "beyond survival เงินทำงานแทนเวลา มีความมั่นคงระยะยาว และสามารถสร้าง impact หรือส่งต่อความมั่นคงให้คนอื่นได้",
