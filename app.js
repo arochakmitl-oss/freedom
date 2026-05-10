@@ -56,10 +56,7 @@ let storageStatus = "local";
 let profileTab = "health";
 
 const suggestedReplies = [
-  "เพิ่มหนี้ใหม่",
   "เริ่มวางแผนการเงิน",
-  "ช่วยจัดลำดับสิ่งที่ควรทำก่อน",
-  "ฉันอยากเริ่มลงทุน",
 ];
 
 function render() {
