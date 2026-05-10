@@ -88,7 +88,7 @@ function updateChrome() {
   const profileButton = document.querySelector("#profileButton");
   if (profileButton) {
     profileButton.hidden = !(profile && profile.known);
-    profileButton.dataset.level = health.level.toLowerCase();
+    profileButton.dataset.level = health.slug;
     profileButton.style.setProperty("--profile-progress", `${health.progress}%`);
     profileButton.innerHTML = `${iconMarkup(health.icon)}<span>${health.short}</span>`;
     profileButton.setAttribute("aria-label", `ระดับสุขภาพการเงิน ${health.level}`);
@@ -149,9 +149,9 @@ function financialHealthModalMarkup() {
 function profileHealthTabMarkup(health, profileLines) {
   return `
     <div class="health-head">
-      <div class="health-orb ${health.level.toLowerCase()}">${iconMarkup(health.icon)}</div>
+      <div class="health-orb ${health.slug}">${iconMarkup(health.icon)}</div>
       <div>
-        <p class="eyebrow">Financial Health</p>
+        <p class="eyebrow">Ocean Journey</p>
         <h2>${health.level}</h2>
         <p class="health-status-copy">${escapeHtml(health.statusIntro)}</p>
       </div>
@@ -163,10 +163,22 @@ function profileHealthTabMarkup(health, profileLines) {
       <p class="label">โปรไฟล์ตอนนี้</p>
       ${profileLines.map((line) => `<div class="health-row"><span>${escapeHtml(line.label)}</span><strong>${escapeHtml(line.value)}</strong></div>`).join("")}
     </section>
+    <section class="health-block ocean-journey-block">
+      <p class="label">ความหมายของระดับนี้</p>
+      <p>${escapeHtml(health.meaning)}</p>
+    </section>
+    <section class="health-block ocean-journey-block">
+      <p class="label">AI adviser focus</p>
+      <p>${escapeHtml(health.adviserFocus)}</p>
+    </section>
+    <section class="health-block ocean-journey-block visual-mood">
+      <p class="label">วาฬ AI และทะเลรอบตัว</p>
+      <p>${escapeHtml(health.visualMood)}</p>
+    </section>
     <section class="health-block next-level">
-      <p class="label">ปลดล็อกระดับถัดไป: ${health.nextLevel}</p>
+      <p class="label">ก้าวสู่ระดับถัดไป: ${health.nextLevel}</p>
       <ul>
-        ${health.hints.map((hint) => `<li>${escapeHtml(hint)}</li>`).join("")}
+        ${health.conditions.map((condition) => `<li>${escapeHtml(condition)}</li>`).join("")}
       </ul>
     </section>
     <button class="primary icon-label" type="button" data-action="restartAssessment">${iconMarkup("target")}<span>เริ่มทำแบบประเมินใหม่</span></button>
@@ -742,64 +754,91 @@ function getFinancialHealth() {
   const hasInvestSignal = text.includes("ลงทุน");
   const hasReserveSignal = text.includes("สำรอง");
 
+  if (income >= 120000 && hasInvestSignal && hasReserveSignal && !hasDebtSignal) return healthLevelData("Legacy", 100);
+  if (income >= 80000 && hasInvestSignal && hasReserveSignal && debtBurden < 0.05) return healthLevelData("Freedom", 92);
+  if (income >= 45000 && (hasInvestSignal || hasReserveSignal) && debtBurden < 0.1) return healthLevelData("Growth", 78 + Math.min(progress / 5, 14));
   if (hasDebtSignal && (debtTotal === 0 || debtBurden > 0.25)) return healthLevelData("Survival", 18 + Math.min(progress, 35));
   if (hasDebtSignal && debtBurden > 0.1) return healthLevelData("Recovery", 38 + Math.min(progress / 4, 20));
-  if (hasDebtSignal) return healthLevelData("Balance", 58 + Math.min(progress / 5, 18));
-  if (income >= 80000 && hasInvestSignal && hasReserveSignal) return healthLevelData("Freedom", 100);
-  if (income >= 45000 && (hasInvestSignal || hasReserveSignal)) return healthLevelData("Growth", 78 + Math.min(progress / 5, 20));
-  if (income > 0) return healthLevelData("Balance", 62 + Math.min(progress / 5, 15));
+  if (hasDebtSignal || income > 0) return healthLevelData("Balance", 58 + Math.min(progress / 5, 18));
   return healthLevelData("Recovery", 42 + Math.min(progress / 4, 20));
 }
 
 function healthLevelData(level, progress) {
   const data = {
     Survival: {
+      level: "Survival Mode",
+      slug: "survival",
       short: "S",
       icon: "heartPulse",
-      nextLevel: "Recovery",
-      description: "ยังอยู่ในโหมดประคองกระแสเงินสดและลดแรงกดดัน",
-      statusIntro: "ระดับนี้คือช่วงที่ต้องให้ความสำคัญกับเงินสดที่จำเป็นก่อน ลดความเสี่ยงจากหนี้หรือรายจ่ายที่กดดัน และยังไม่ควรรีบเพิ่มภาระการเงินใหม่",
-      detail: "Freedom จะช่วยให้คุณเห็นภาพเงินเข้าออก หนี้ และสิ่งที่ต้องกันไว้ก่อน เพื่อไม่ให้การเงินตึงเกินไป",
-      hints: ["บันทึกรายได้ต่อเดือนให้ครบ", "ถ้ามีหนี้ ให้เพิ่มยอดหนี้ ดอกเบี้ย และขั้นต่ำ", "ทำให้ยอดจ่ายขั้นต่ำรวมไม่เกิน 25% ของรายได้"],
+      nextLevel: "Recovery Mode",
+      statusIntro: "ช่วงนี้คือการประคองให้ผ่านรอบการเงินอย่างมั่นคงขึ้นทีละก้าว โดยเริ่มจากสิ่งจำเป็นและภาระที่กดดันที่สุดก่อน",
+      meaning: "เงินอาจชนเดือน มีแรงกดดันเรื่องหนี้หรือรายจ่าย และยังไม่มีเงินสำรองที่พออุ่นใจ",
+      adviserFocus: "ช่วยจัดลำดับค่าใช้จ่ายจำเป็น เตือนกำหนดจ่ายขั้นต่ำ ลดรายจ่ายที่ไม่เร่งด่วน และเลือกหนึ่งก้าวเล็ก ๆ ที่ทำได้ทันที",
+      visualMood: "ทะเลลึกและนิ่ง แสงน้อยแต่ยังเห็นทาง วาฬ AI เรืองแสงแดงอมม่วงเบา ๆ ว่ายใกล้ผู้ใช้เหมือนคอยพยุงจังหวะหายใจ",
+      conditions: ["จ่ายขั้นต่ำได้ครบตามรอบ", "ไม่มี missed payment ต่อเนื่อง", "เงินพอใช้ถึงสิ้นเดือน", "เริ่มควบคุมรายจ่ายประจำได้"],
     },
     Recovery: {
+      level: "Recovery Mode",
+      slug: "recovery",
       short: "R",
       icon: "shield",
-      nextLevel: "Balance",
-      description: "เริ่มฟื้นตัวและมีแผนจัดลำดับความสำคัญ",
-      statusIntro: "ระดับนี้คือช่วงเริ่มกลับมาคุมเกมได้ คุณมีข้อมูลพอจะวางแผน ลดการรั่วไหล และจัดลำดับสิ่งที่ต้องจ่ายก่อนหลัง",
-      detail: "คุณมีข้อมูลพอให้เริ่มวางแผนแล้ว ขั้นนี้เน้นหยุดรั่ว จ่ายหนี้ถูกลำดับ และกันเงินจำเป็นก่อน",
-      hints: ["ลดภาระขั้นต่ำรวมให้ไม่เกิน 10% ของรายได้", "กันเงินสำรองเริ่มต้นอย่างน้อย 1 เดือนของค่าใช้จ่ายจำเป็น", "ไม่มีหนี้ใหม่ที่ดอกเบี้ยสูงเพิ่ม"],
+      nextLevel: "Balance Mode",
+      statusIntro: "คุณเริ่มเห็นจังหวะของเงินชัดขึ้น และสามารถค่อย ๆ ลดแรงกดดันโดยไม่ต้องรีบเปลี่ยนทุกอย่างในครั้งเดียว",
+      meaning: "เริ่มควบคุมสถานการณ์การเงินได้ หนี้ไม่เพิ่มขึ้น และเริ่มมีวินัยกับเงินเข้าออกมากขึ้น",
+      adviserFocus: "ช่วยตั้ง rhythm การจ่ายหนี้ สรุปเงินเหลือจริง แนะนำ expense cut ที่ไม่กระทบชีวิตมาก และสร้าง safety buffer เริ่มต้น",
+      visualMood: "ทะเลเริ่มมีแสง cyan จากผิวน้ำ วาฬ AI เรืองแสงฟ้าเขียวชัดขึ้น เคลื่อนไหวช้าและมั่นคงเหมือนกำลังนำทางออกจากน้ำลึก",
+      conditions: ["จ่ายหนี้ได้มากกว่าขั้นต่ำบางรอบ", "เริ่มมีเงินออมแม้จำนวนเล็ก", "มีเงินเหลือปลายเดือน", "ไม่สร้างหนี้เพิ่มต่อเนื่อง"],
     },
     Balance: {
+      level: "Balance Mode",
+      slug: "balance",
       short: "B",
       icon: "target",
-      nextLevel: "Growth",
-      description: "การเงินเริ่มสมดุลและควบคุมได้",
-      statusIntro: "ระดับนี้คือการเงินเริ่มอยู่ตัว ภาระหลักเริ่มควบคุมได้ และคุณเริ่มมีพื้นที่สำหรับเงินสำรองหรือการลงทุนอย่างระมัดระวัง",
-      detail: "คุณเริ่มมีพื้นที่หายใจทางการเงินแล้ว เหมาะกับการเพิ่มเงินสำรองและวางระบบลงทุนแบบระมัดระวัง",
-      hints: ["มีเงินสำรอง 3 เดือนของค่าใช้จ่ายจำเป็น", "หนี้ดอกเบี้ยสูงเป็น 0 หรือมีแผนปิดชัดเจน", "เริ่มลงทุนสม่ำเสมอได้อย่างน้อย 5-10% ของรายได้"],
+      nextLevel: "Growth Mode",
+      statusIntro: "รายรับรายจ่ายเริ่มสมดุลขึ้น คุณมีพื้นที่ให้คิดเป็นระบบมากขึ้น และสามารถเลือกแผนที่ยั่งยืนกับชีวิตจริง",
+      meaning: "รายรับรายจ่ายสมดุล หนี้ลดลงต่อเนื่อง และเริ่มมี financial stability ที่จับต้องได้",
+      adviserFocus: "ช่วย optimize แผนจ่ายหนี้ สร้าง emergency fund ทีละเดือน ตรวจ spending pattern และเริ่มวาง passive income experiment เล็ก ๆ",
+      visualMood: "ทะเลเปิดกว้างขึ้น มีแสง emerald ใต้ผิวน้ำ วาฬ AI ตัวใหญ่ขึ้น โปร่งใสขึ้น และมี glow สม่ำเสมอรอบลำตัว",
+      conditions: ["มี emergency fund 3-6 เดือน", "หนี้ดอกสูงลดลงชัดเจน", "เริ่มมี passive income หรือรายได้เสริมที่วัดผลได้", "มี monthly surplus ต่อเนื่อง"],
     },
     Growth: {
+      level: "Growth Mode",
+      slug: "growth",
       short: "G",
       icon: "trend",
-      nextLevel: "Freedom",
-      description: "พร้อมต่อยอดเงินและสร้างความมั่งคั่งระยะยาว",
-      statusIntro: "ระดับนี้คือฐานการเงินเริ่มแข็งแรง คุณสามารถโฟกัสการเติบโต อัตราออม การลงทุน และรายได้เสริมที่วัดผลได้มากขึ้น",
-      detail: "ฐานการเงินเริ่มมั่นคง จุดโฟกัสคือเพิ่มอัตราออม ลงทุนต่อเนื่อง และสร้างรายได้เสริมที่วัดผลได้",
-      hints: ["มีเงินสำรอง 6 เดือน", "ลงทุนหรือออมระยะยาวอย่างน้อย 15-20% ของรายได้", "หนี้ผู้บริโภคดอกเบี้ยสูงเป็น 0"],
+      nextLevel: "Freedom Mode",
+      statusIntro: "ฐานการเงินเริ่มเติบโต ความเครียดลดลง และคุณเริ่มมีพลังไปต่อยอดรายได้ การลงทุน และระบบระยะยาว",
+      meaning: "การเงินเริ่มเติบโต มี passive income หรือรายได้เสริมบางส่วน และความเครียดทางการเงินลดลง",
+      adviserFocus: "ช่วยเพิ่ม consistency ของรายได้เสริม สร้าง investment habit ตรวจ risk/reward และคุมไม่ให้การเติบโตสร้างภาระใหม่",
+      visualMood: "ทะเลสว่างขึ้นเป็นม่วง emerald มีประกายละเอียดรอบตัว วาฬ AI เรืองแสงมากขึ้น ว่ายช้าลงและดูสง่างามขึ้น",
+      conditions: ["passive income ช่วยค่าใช้จ่ายได้บางส่วน", "หนี้ดอกสูงเกือบหมดหรือมีแผนปิดชัดเจน", "มี investment habit ต่อเนื่อง", "มีเงินสำรองที่แข็งแรง"],
     },
     Freedom: {
+      level: "Freedom Mode",
+      slug: "freedom",
       short: "F",
       icon: "sparkles",
-      nextLevel: "Freedom+",
-      description: "มีอิสระทางการเงินในระดับที่เลือกทางเดินได้มากขึ้น",
-      statusIntro: "ระดับนี้คือคุณมีอิสระในการตัดสินใจมากขึ้น เพราะระบบเงินสด หนี้ เงินสำรอง และการลงทุนมีความมั่นคงในระดับดี",
-      detail: "คุณมีฐานที่ดีมาก ขั้นต่อไปคือรักษาระบบ ป้องกันความเสี่ยง และวางแผนเป้าหมายชีวิตระยะยาว",
-      hints: ["รักษาเงินสำรอง 6-12 เดือน", "ลงทุนต่อเนื่องตามแผน", "ทบทวนประกัน ภาษี และเป้าหมายเกษียณทุก 6 เดือน"],
+      nextLevel: "Legacy Mode",
+      statusIntro: "คุณมีอิสระในการเลือกมากขึ้น ไม่ต้องตัดสินใจจากความกดดันระยะสั้นเพียงอย่างเดียว และเริ่มออกแบบชีวิตตามคุณค่าของตัวเอง",
+      meaning: "debt-free หรือใกล้ debt-free มี freedom of choice และไม่ใช้ชีวิตแบบ paycheck to paycheck",
+      adviserFocus: "ช่วยรักษาระบบ wealth allocation วางเป้าหมายชีวิต ระวัง lifestyle creep และต่อยอด passive income ให้มั่นคงขึ้น",
+      visualMood: "มหาสมุทรเปิดกว้างและสว่าง วาฬ AI โปร่งแสงเหมือน liquid glass มี glow ขาว cyan และ emerald ที่สงบมาก",
+      conditions: ["passive income ครอบคลุมค่าใช้จ่ายหลักได้มากขึ้น", "มี wealth system ที่ยั่งยืน", "มี financial flexibility สูง", "ทบทวนระบบเงิน การลงทุน และความเสี่ยงเป็นประจำ"],
+    },
+    Legacy: {
+      level: "Legacy Mode",
+      slug: "legacy",
+      short: "L",
+      icon: "seed",
+      nextLevel: "Legacy Mode",
+      statusIntro: "นี่คือช่วงที่เงินเริ่มทำงานร่วมกับเวลาและคุณค่าของชีวิต คุณมีพื้นที่ในการสร้าง impact และส่งต่อความมั่นคงอย่างตั้งใจ",
+      meaning: "beyond survival เงินทำงานแทนเวลา มีความมั่นคงระยะยาว และสามารถสร้าง impact หรือส่งต่อความมั่นคงให้คนอื่นได้",
+      adviserFocus: "ช่วยออกแบบระบบระยะยาว การส่งต่อทรัพย์สิน แผนภาษี การให้ และการรักษาความยั่งยืนของ wealth system",
+      visualMood: "ทะเลเป็นสีรุ่งเช้า กว้าง สว่าง และนิ่ง วาฬ AI ดู majestic ที่สุด มีแสงนุ่มลึกไหลอยู่ภายในเหมือน guardian ของทั้ง ecosystem",
+      conditions: ["รักษา passive income ให้ครอบคลุมค่าใช้จ่ายหลัก", "ดูแลระบบทรัพย์สินและความเสี่ยงระยะยาว", "ออกแบบ legacy goal ที่สอดคล้องกับชีวิต", "ส่งต่อความรู้หรือความมั่นคงในแบบที่คุณเลือก"],
     },
   };
-  return { level, progress: Math.max(0, Math.min(100, Math.round(progress))), ...data[level] };
+  return { progress: Math.max(0, Math.min(100, Math.round(progress))), ...data[level] };
 }
 
 function getFinancialProfileLines() {

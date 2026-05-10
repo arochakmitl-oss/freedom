@@ -219,6 +219,7 @@ body[data-mode="desktop"] .chat-dock {
 .profile-ring[data-level="balance"] { --level-color: var(--emerald); }
 .profile-ring[data-level="growth"] { --level-color: var(--purple); }
 .profile-ring[data-level="freedom"] { --level-color: #ffffff; }
+.profile-ring[data-level="legacy"] { --level-color: #ffe8a3; }
 
 .profile-ring span {
   grid-area: 1 / 1;
@@ -1080,6 +1081,7 @@ body[data-mode="desktop"] .health-card {
 .health-orb.balance { color: var(--emerald); }
 .health-orb.growth { color: var(--purple); background: rgba(157, 108, 255, 0.14); }
 .health-orb.freedom { color: #fff; background: rgba(255, 255, 255, 0.12); }
+.health-orb.legacy { color: #ffe8a3; background: rgba(255, 232, 163, 0.14); box-shadow: 0 0 28px rgba(255, 232, 163, 0.2); }
 
 .health-meter {
   height: 8px;
@@ -1108,6 +1110,19 @@ body[data-mode="desktop"] .health-card {
 .health-block p,
 .health-block ul {
   margin: 0;
+}
+
+.ocean-journey-block p:not(.label) {
+  color: var(--muted);
+  line-height: 1.58;
+}
+
+.visual-mood {
+  border-color: rgba(73, 232, 255, 0.18);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(73, 232, 255, 0.1), transparent 42%),
+    radial-gradient(circle at 92% 100%, rgba(80, 240, 173, 0.09), transparent 40%),
+    rgba(255, 255, 255, 0.06);
 }
 
 .health-row {
