@@ -1,6 +1,7 @@
 const {
   ADVISER_INSTRUCTIONS,
   GEMINI_MODEL,
+  getGeminiApiKey,
   getGeminiOutputText,
   json,
   normalizeMessages,
@@ -12,7 +13,8 @@ exports.handler = async (event) => {
     return json(405, { error: "Method not allowed" });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
+  const geminiApiKey = getGeminiApiKey();
+  if (!geminiApiKey) {
     return json(500, {
       error: "ยังไม่ได้ตั้งค่า GEMINI_API_KEY บน Netlify Environment Variables",
     });
@@ -29,7 +31,7 @@ exports.handler = async (event) => {
     const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`, {
       method: "POST",
       headers: {
-        "x-goog-api-key": process.env.GEMINI_API_KEY,
+        "x-goog-api-key": geminiApiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

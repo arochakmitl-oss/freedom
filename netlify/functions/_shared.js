@@ -26,6 +26,13 @@ function json(statusCode, payload) {
   };
 }
 
+function getGeminiApiKey() {
+  return process.env.GEMINI_API_KEY
+    || process.env.GOOGLE_API_KEY
+    || process.env.GOOGLE_GENERATIVE_AI_API_KEY
+    || "";
+}
+
 function normalizeMessages(messages) {
   if (!Array.isArray(messages)) return [];
   return messages
@@ -57,6 +64,7 @@ module.exports = {
   GEMINI_MODEL,
   SUPABASE_TABLE,
   getGeminiOutputText,
+  getGeminiApiKey,
   json,
   normalizeMessages,
   toGeminiContents,

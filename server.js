@@ -78,6 +78,13 @@ function sendJson(response, statusCode, payload) {
   response.end(JSON.stringify(payload));
 }
 
+function getGeminiApiKey() {
+  return process.env.GEMINI_API_KEY
+    || process.env.GOOGLE_API_KEY
+    || process.env.GOOGLE_GENERATIVE_AI_API_KEY
+    || "";
+}
+
 async function readBody(request) {
   const chunks = [];
   for await (const chunk of request) chunks.push(chunk);
@@ -145,7 +152,8 @@ function getGeminiOutputText(data) {
 }
 
 async function handleChat(request, response) {
-  if (!process.env.GEMINI_API_KEY) {
+  const geminiApiKey = getGeminiApiKey();
+  if (!geminiApiKey) {
     sendJson(response, 500, {
       error: "ยังไม่ได้ตั้งค่า GEMINI_API_KEY บน backend",
     });
@@ -164,7 +172,7 @@ async function handleChat(request, response) {
     const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`, {
       method: "POST",
       headers: {
-        "x-goog-api-key": process.env.GEMINI_API_KEY,
+        "x-goog-api-key": geminiApiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -264,8 +272,8 @@ const server = http.createServer(async (request, response) => {
       ok: true,
       model: GEMINI_MODEL,
       provider: "gemini",
-      openaiConfigured: Boolean(process.env.GEMINI_API_KEY),
-      geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+      openaiConfigured: Boolean(getGeminiApiKey()),
+      geminiConfigured: Boolean(getGeminiApiKey()),
       supabaseConfigured: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
     });
     return;

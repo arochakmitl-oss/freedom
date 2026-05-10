@@ -45,4 +45,6 @@ SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_TABLE=freedom_profiles
 ```
 
+ถ้าตั้ง key ด้วยชื่อ `GOOGLE_API_KEY` หรือ `GOOGLE_GENERATIVE_AI_API_KEY` backend ก็รองรับเช่นกัน
+
 ห้าม commit ค่า secret ลง GitHub ให้ใส่ผ่าน Netlify Site settings เท่านั้น
