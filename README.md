@@ -1,14 +1,14 @@
 # Freedom
 
-แอปแชทภาษาไทยสำหรับผู้ช่วยการเงินส่วนตัว โดยหน้าเว็บเรียก backend local ที่ `/api/chat` และ backend เป็นคนเชื่อมต่อ OpenAI Responses API
+แอปแชทภาษาไทยสำหรับผู้ช่วยการเงินส่วนตัว โดยหน้าเว็บเรียก backend local ที่ `/api/chat` และ backend เป็นคนเชื่อมต่อ Gemini API
 
 ## ตั้งค่า
 
 สร้างไฟล์ `.env` ในโฟลเดอร์นี้ แล้วใส่ค่า:
 
 ```bash
-OPENAI_API_KEY=sk-your-openai-api-key
-OPENAI_MODEL=gpt-4.1-mini
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-2.5-flash
 PORT=4176
 HOST=127.0.0.1
 ```
@@ -38,8 +38,8 @@ http://127.0.0.1:4176
 ตั้งค่า Environment Variables ใน Netlify ก่อน deploy:
 
 ```text
-OPENAI_API_KEY=sk-your-openai-api-key
-OPENAI_MODEL=gpt-4.1-mini
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-2.5-flash
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_TABLE=freedom_profiles

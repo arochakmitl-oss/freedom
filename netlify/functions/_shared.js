@@ -1,4 +1,4 @@
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const SUPABASE_TABLE = process.env.SUPABASE_TABLE || "freedom_profiles";
 
 const ADVISER_INSTRUCTIONS = `
@@ -32,26 +32,32 @@ function normalizeMessages(messages) {
     .filter((message) => message && typeof message.text === "string")
     .slice(-12)
     .map((message) => ({
-      role: message.role === "ai" ? "assistant" : "user",
+      role: message.role === "ai" ? "model" : "user",
       content: message.text.slice(0, 1800),
     }));
 }
 
-function getOutputText(data) {
-  if (typeof data.output_text === "string" && data.output_text.trim()) {
-    return data.output_text.trim();
-  }
+function toGeminiContents(messages) {
+  return messages.map((message) => ({
+    role: message.role,
+    parts: [{ text: message.content }],
+  }));
+}
 
-  const message = data.output?.find((item) => item.type === "message");
-  const text = message?.content?.find((item) => item.type === "output_text")?.text;
-  return typeof text === "string" ? text.trim() : "";
+function getGeminiOutputText(data) {
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  return parts
+    .map((part) => part.text || "")
+    .join("")
+    .trim();
 }
 
 module.exports = {
   ADVISER_INSTRUCTIONS,
-  OPENAI_MODEL,
+  GEMINI_MODEL,
   SUPABASE_TABLE,
-  getOutputText,
+  getGeminiOutputText,
   json,
   normalizeMessages,
+  toGeminiContents,
 };

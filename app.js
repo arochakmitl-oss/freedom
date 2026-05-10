@@ -1005,9 +1005,10 @@ async function refreshStatus() {
   try {
     const response = await fetch(`${API_BASE}/api/status`);
     const data = await response.json();
-    aiStatus = data.openaiConfigured
+    const aiConfigured = data.geminiConfigured || data.openaiConfigured;
+    aiStatus = aiConfigured
       ? `เชื่อมต่อ AI หลังบ้านแล้ว · ${data.model}`
-      : "เชื่อม backend แล้ว · รอ OPENAI_API_KEY";
+      : "เชื่อม backend แล้ว · รอ GEMINI_API_KEY";
     if (data.supabaseConfigured) {
       aiStatus += storageStatus === "supabase" ? " · Supabase พร้อม" : " · กำลังเชื่อม Supabase";
     }

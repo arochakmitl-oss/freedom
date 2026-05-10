@@ -7,7 +7,7 @@ loadEnvFile();
 
 const PORT = Number(process.env.PORT || 4176);
 const HOST = process.env.HOST || "127.0.0.1";
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const SUPABASE_TABLE = process.env.SUPABASE_TABLE || "freedom_profiles";
 const ROOT = __dirname;
 
@@ -84,7 +84,7 @@ async function readBody(request) {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-function sendOpenAISetupPage(response, message = "") {
+function sendGeminiSetupPage(response, message = "") {
   response.writeHead(200, {
     "Content-Type": "text/html; charset=utf-8",
     "Cache-Control": "no-store",
@@ -94,7 +94,7 @@ function sendOpenAISetupPage(response, message = "") {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ตั้งค่า OpenAI</title>
+    <title>ตั้งค่า Gemini</title>
     <style>
       body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #030512; color: #f5f8ff; font-family: system-ui, sans-serif; }
       form { width: min(560px, calc(100% - 32px)); display: grid; gap: 14px; padding: 22px; border: 1px solid rgba(255,255,255,.18); border-radius: 14px; background: rgba(255,255,255,.08); }
@@ -106,11 +106,11 @@ function sendOpenAISetupPage(response, message = "") {
     </style>
   </head>
   <body>
-    <form method="post" action="/api/setup/openai">
-      <h1>ตั้งค่า OpenAI API Key</h1>
+    <form method="post" action="/api/setup/gemini">
+      <h1>ตั้งค่า Gemini API Key</h1>
       <p>วาง key ในช่องนี้ ระบบจะบันทึกลงไฟล์ .env ในเครื่องนี้เท่านั้น และไม่แสดง key กลับมาในหน้าเว็บ</p>
       ${message ? `<p class="ok">${message}</p>` : ""}
-      <input name="openaiApiKey" type="password" autocomplete="off" placeholder="sk-..." required />
+      <input name="geminiApiKey" type="password" autocomplete="off" placeholder="AIza..." required />
       <button type="submit">บันทึกและเปิดใช้งาน</button>
       <p><a href="/" style="color:#49e8ff">กลับไปที่แอป Freedom</a></p>
     </form>
@@ -124,25 +124,30 @@ function normalizeMessages(messages) {
     .filter((message) => message && typeof message.text === "string")
     .slice(-12)
     .map((message) => ({
-      role: message.role === "ai" ? "assistant" : "user",
+      role: message.role === "ai" ? "model" : "user",
       content: message.text.slice(0, 1800),
     }));
 }
 
-function getOutputText(data) {
-  if (typeof data.output_text === "string" && data.output_text.trim()) {
-    return data.output_text.trim();
-  }
+function toGeminiContents(messages) {
+  return messages.map((message) => ({
+    role: message.role,
+    parts: [{ text: message.content }],
+  }));
+}
 
-  const message = data.output?.find((item) => item.type === "message");
-  const text = message?.content?.find((item) => item.type === "output_text")?.text;
-  return typeof text === "string" ? text.trim() : "";
+function getGeminiOutputText(data) {
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  return parts
+    .map((part) => part.text || "")
+    .join("")
+    .trim();
 }
 
 async function handleChat(request, response) {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) {
     sendJson(response, 500, {
-      error: "ยังไม่ได้ตั้งค่า OPENAI_API_KEY บน backend",
+      error: "ยังไม่ได้ตั้งค่า GEMINI_API_KEY บน backend",
     });
     return;
   }
@@ -156,36 +161,39 @@ async function handleChat(request, response) {
       return;
     }
 
-    const apiResponse = await fetch("https://api.openai.com/v1/responses", {
+    const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "x-goog-api-key": process.env.GEMINI_API_KEY,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: OPENAI_MODEL,
-        instructions: ADVISER_INSTRUCTIONS,
-        input,
-        temperature: 0.7,
-        max_output_tokens: 420,
+        systemInstruction: {
+          parts: [{ text: ADVISER_INSTRUCTIONS }],
+        },
+        contents: toGeminiContents(input),
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 420,
+        },
       }),
     });
 
     const data = await apiResponse.json();
     if (!apiResponse.ok) {
       sendJson(response, apiResponse.status, {
-        error: data.error?.message || "OpenAI API ตอบกลับไม่สำเร็จ",
+        error: data.error?.message || "Gemini API ตอบกลับไม่สำเร็จ",
       });
       return;
     }
 
-    const reply = getOutputText(data);
+    const reply = getGeminiOutputText(data);
     sendJson(response, 200, {
       reply: reply || "ขอโทษครับ ตอนนี้ฉันยังสรุปคำตอบไม่ได้ ลองเล่าให้สั้นลงอีกนิดได้ไหม",
     });
   } catch (error) {
     sendJson(response, 500, {
-      error: "backend คุยกับ OpenAI ไม่สำเร็จ",
+      error: "backend คุยกับ Gemini ไม่สำเร็จ",
       detail: error.message,
     });
   }
@@ -216,25 +224,25 @@ async function serveStatic(request, response) {
 }
 
 const server = http.createServer(async (request, response) => {
-  if (request.method === "GET" && request.url === "/setup-openai") {
-    sendOpenAISetupPage(response);
+  if (request.method === "GET" && (request.url === "/setup-gemini" || request.url === "/setup-openai")) {
+    sendGeminiSetupPage(response);
     return;
   }
 
-  if (request.method === "POST" && request.url === "/api/setup/openai") {
+  if (request.method === "POST" && (request.url === "/api/setup/gemini" || request.url === "/api/setup/openai")) {
     try {
       const rawBody = await readBody(request);
       const params = new URLSearchParams(rawBody);
-      const key = String(params.get("openaiApiKey") || "").trim();
-      if (!key.startsWith("sk-")) {
-        sendOpenAISetupPage(response, "Key ยังไม่ถูกต้อง กรุณาตรวจว่าเริ่มด้วย sk-");
+      const key = String(params.get("geminiApiKey") || params.get("openaiApiKey") || "").trim();
+      if (!key) {
+        sendGeminiSetupPage(response, "กรุณาใส่ Gemini API key ก่อนบันทึก");
         return;
       }
-      writeEnvValue("OPENAI_API_KEY", key);
-      sendOpenAISetupPage(response, "บันทึกสำเร็จแล้ว ตอนนี้ backend ใช้ OpenAI key นี้ได้ทันที");
+      writeEnvValue("GEMINI_API_KEY", key);
+      sendGeminiSetupPage(response, "บันทึกสำเร็จแล้ว ตอนนี้ backend ใช้ Gemini key นี้ได้ทันที");
     } catch (error) {
       sendJson(response, 500, {
-        error: "บันทึก OPENAI_API_KEY ไม่สำเร็จ",
+        error: "บันทึก GEMINI_API_KEY ไม่สำเร็จ",
         detail: error.message,
       });
     }
@@ -254,8 +262,10 @@ const server = http.createServer(async (request, response) => {
   if (request.method === "GET" && request.url === "/api/status") {
     sendJson(response, 200, {
       ok: true,
-      model: OPENAI_MODEL,
-      openaiConfigured: Boolean(process.env.OPENAI_API_KEY),
+      model: GEMINI_MODEL,
+      provider: "gemini",
+      openaiConfigured: Boolean(process.env.GEMINI_API_KEY),
+      geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
       supabaseConfigured: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
     });
     return;
