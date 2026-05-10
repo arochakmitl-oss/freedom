@@ -364,6 +364,17 @@ h3 {
   display: none;
 }
 
+.overlay-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+}
+
+.overlay-layer:empty {
+  display: none;
+}
+
 .screen {
   display: none;
   animation: riseIn 0.82s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -932,7 +943,7 @@ body[data-mode="desktop"] .whale-media {
 .health-sheet {
   position: absolute;
   inset: 92px 0 0;
-  z-index: 60;
+  z-index: 1;
   display: grid;
   align-items: start;
   pointer-events: auto;

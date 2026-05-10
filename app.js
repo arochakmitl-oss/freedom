@@ -58,6 +58,7 @@ let profileTab = "health";
 function render() {
   updateChrome();
   document.querySelector("#appContent").innerHTML = getViewMarkup();
+  document.querySelector("#overlayLayer").innerHTML = isHealthOpen ? financialHealthModalMarkup() : "";
   const chatDock = document.querySelector("#chatDock");
   const canType = view === "chat" || (view === "login" && authStep === "username");
   chatDock.hidden = !canType;
@@ -98,11 +99,10 @@ function getScreenTitle() {
 
 function getViewMarkup() {
   const toast = authToast ? authToastMarkup() : "";
-  const health = isHealthOpen ? financialHealthModalMarkup() : "";
-  if (view === "login") return `${toast}${loginMarkup()}${health}`;
-  if (view === "whale") return `${toast}${whaleIntroMarkup()}${health}`;
-  if (view === "debt") return `${toast}${debtMarkup()}${health}`;
-  return `${toast}${chatMarkup()}${health}`;
+  if (view === "login") return `${toast}${loginMarkup()}`;
+  if (view === "whale") return `${toast}${whaleIntroMarkup()}`;
+  if (view === "debt") return `${toast}${debtMarkup()}`;
+  return `${toast}${chatMarkup()}`;
 }
 
 function whaleIntroMarkup() {
