@@ -696,7 +696,7 @@ async function askBackend() {
   try {
     data = await response.json();
   } catch {
-    throw new Error("backend ส่งคำตอบกลับมาไม่ถูกต้อง");
+    throw new Error(`backend ส่งคำตอบกลับมาไม่ถูกต้อง (${response.status} ${response.statusText || "unknown"})`);
   }
 
   if (!response.ok) {

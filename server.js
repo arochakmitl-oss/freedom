@@ -40,6 +40,22 @@ function loadEnvFile() {
   }
 }
 
+function writeEnvValue(key, value) {
+  const envPath = path.join(__dirname, ".env");
+  const lines = fsSync.existsSync(envPath)
+    ? fsSync.readFileSync(envPath, "utf8").split(/\r?\n/)
+    : [];
+  let found = false;
+  const nextLines = lines.map((line) => {
+    if (!line.trim().startsWith(`${key}=`)) return line;
+    found = true;
+    return `${key}=${value}`;
+  });
+  if (!found) nextLines.push(`${key}=${value}`);
+  fsSync.writeFileSync(envPath, `${nextLines.filter(Boolean).join("\n")}\n`);
+  process.env[key] = value;
+}
+
 const ADVISER_INSTRUCTIONS = `
 คุณคือ Freedom ผู้ช่วยการเงินส่วนตัวภาษาไทย
 บุคลิก: ใจเย็น ฉลาด ไม่ตัดสินผู้ใช้ ชัดเจน สมจริง และให้กำลังใจ
@@ -66,6 +82,40 @@ async function readBody(request) {
   const chunks = [];
   for await (const chunk of request) chunks.push(chunk);
   return Buffer.concat(chunks).toString("utf8");
+}
+
+function sendOpenAISetupPage(response, message = "") {
+  response.writeHead(200, {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
+  });
+  response.end(`<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ตั้งค่า OpenAI</title>
+    <style>
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #030512; color: #f5f8ff; font-family: system-ui, sans-serif; }
+      form { width: min(560px, calc(100% - 32px)); display: grid; gap: 14px; padding: 22px; border: 1px solid rgba(255,255,255,.18); border-radius: 14px; background: rgba(255,255,255,.08); }
+      input, button { min-height: 46px; border-radius: 999px; font: inherit; }
+      input { border: 1px solid rgba(255,255,255,.18); padding: 0 16px; background: rgba(0,0,0,.3); color: white; }
+      button { border: 0; background: linear-gradient(135deg, #50f0ad, #49e8ff); color: #041018; font-weight: 700; }
+      p { color: #a8b3cd; line-height: 1.5; }
+      .ok { color: #50f0ad; }
+    </style>
+  </head>
+  <body>
+    <form method="post" action="/api/setup/openai">
+      <h1>ตั้งค่า OpenAI API Key</h1>
+      <p>วาง key ในช่องนี้ ระบบจะบันทึกลงไฟล์ .env ในเครื่องนี้เท่านั้น และไม่แสดง key กลับมาในหน้าเว็บ</p>
+      ${message ? `<p class="ok">${message}</p>` : ""}
+      <input name="openaiApiKey" type="password" autocomplete="off" placeholder="sk-..." required />
+      <button type="submit">บันทึกและเปิดใช้งาน</button>
+      <p><a href="/" style="color:#49e8ff">กลับไปที่แอป Freedom</a></p>
+    </form>
+  </body>
+</html>`);
 }
 
 function normalizeMessages(messages) {
@@ -166,6 +216,31 @@ async function serveStatic(request, response) {
 }
 
 const server = http.createServer(async (request, response) => {
+  if (request.method === "GET" && request.url === "/setup-openai") {
+    sendOpenAISetupPage(response);
+    return;
+  }
+
+  if (request.method === "POST" && request.url === "/api/setup/openai") {
+    try {
+      const rawBody = await readBody(request);
+      const params = new URLSearchParams(rawBody);
+      const key = String(params.get("openaiApiKey") || "").trim();
+      if (!key.startsWith("sk-")) {
+        sendOpenAISetupPage(response, "Key ยังไม่ถูกต้อง กรุณาตรวจว่าเริ่มด้วย sk-");
+        return;
+      }
+      writeEnvValue("OPENAI_API_KEY", key);
+      sendOpenAISetupPage(response, "บันทึกสำเร็จแล้ว ตอนนี้ backend ใช้ OpenAI key นี้ได้ทันที");
+    } catch (error) {
+      sendJson(response, 500, {
+        error: "บันทึก OPENAI_API_KEY ไม่สำเร็จ",
+        detail: error.message,
+      });
+    }
+    return;
+  }
+
   if (request.method === "GET" && request.url === "/api/config") {
     sendJson(response, 200, {
       supabaseConfigured: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),

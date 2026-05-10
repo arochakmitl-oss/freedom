@@ -26,3 +26,23 @@ http://127.0.0.1:4176
 ```
 
 อย่าเปิดด้วย `file://` หากต้องการใช้ AI จริง เพราะ browser ต้องเรียก backend ผ่าน `/api/chat`
+
+## Deploy บน Netlify
+
+โปรเจกต์นี้รองรับ Netlify Functions แล้ว โดย route ต่อไปนี้จะถูก map อัตโนมัติ:
+
+- `/api/chat` -> `netlify/functions/chat.js`
+- `/api/status` -> `netlify/functions/status.js`
+- `/api/config` -> `netlify/functions/config.js`
+
+ตั้งค่า Environment Variables ใน Netlify ก่อน deploy:
+
+```text
+OPENAI_API_KEY=sk-your-openai-api-key
+OPENAI_MODEL=gpt-4.1-mini
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_TABLE=freedom_profiles
+```
+
+ห้าม commit ค่า secret ลง GitHub ให้ใส่ผ่าน Netlify Site settings เท่านั้น
