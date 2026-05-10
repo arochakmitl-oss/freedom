@@ -825,29 +825,6 @@ body[data-mode="desktop"] .whale-media {
   font-size: 18px;
 }
 
-.quick-replies {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 2px;
-  scrollbar-width: none;
-  animation: softAppear 0.78s 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.quick-replies::-webkit-scrollbar {
-  display: none;
-}
-
-.quick-replies .chip {
-  flex: 0 0 auto;
-  max-width: 230px;
-  white-space: nowrap;
-}
-
-.quick-replies .ui-icon {
-  color: var(--emerald);
-}
-
 .mini-summary {
   display: flex;
   justify-content: space-between;

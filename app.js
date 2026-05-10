@@ -55,10 +55,6 @@ let supabaseTable = "freedom_profiles";
 let storageStatus = "local";
 let profileTab = "health";
 
-const suggestedReplies = [
-  "เริ่มวางแผนการเงิน",
-];
-
 function render() {
   updateChrome();
   document.querySelector("#appContent").innerHTML = getViewMarkup();
@@ -261,27 +257,7 @@ function chatMarkup() {
           <span class="thinking"><span></span><span></span><span></span></span>
         </div>
       </section>
-
-      ${quickRepliesMarkup()}
     </article>
-  `;
-}
-
-function quickRepliesMarkup() {
-  if (flowMode === "onboarding") {
-    const item = onboardingQuestions[onboardingStep];
-    const replies = item.options || [item.placeholder.replace("เช่น ", "")];
-    return `
-      <section class="quick-replies" aria-label="ตัวอย่างคำตอบ">
-        ${replies.map((reply) => `<button class="chip icon-label" type="button" data-reply="${escapeHtml(reply)}">${iconMarkup(getReplyIcon(reply))}<span>${escapeHtml(reply)}</span></button>`).join("")}
-      </section>
-    `;
-  }
-
-  return `
-    <section class="quick-replies" aria-label="คำถามแนะนำ">
-      ${suggestedReplies.map((reply) => `<button class="chip icon-label" type="button" data-reply="${escapeHtml(reply)}">${iconMarkup(getReplyIcon(reply))}<span>${escapeHtml(reply)}</span></button>`).join("")}
-    </section>
   `;
 }
 
@@ -417,9 +393,6 @@ function wire() {
   });
   const modeToggle = document.querySelector("#modeToggle");
   if (modeToggle) modeToggle.onclick = toggleViewMode;
-  document.querySelectorAll("[data-reply]").forEach((button) => {
-    button.addEventListener("click", () => handleQuickReply(button.dataset.reply));
-  });
   document.querySelectorAll("[data-pin]").forEach((button) => {
     button.addEventListener("click", () => handlePinKey(button.dataset.pin));
   });
@@ -449,19 +422,6 @@ function handleDebt(event) {
     text: `บันทึกหนี้ "${debt.name}" แล้วครับ ขั้นต่อไป Freedom จะช่วยดูว่าหนี้นี้ควรอยู่ตรงไหนในแผนการเงินของคุณ`,
   });
   render();
-}
-
-function handleQuickReply(reply) {
-  if (reply === "เพิ่มหนี้ใหม่") {
-    view = "debt";
-    render();
-    return;
-  }
-  if (reply === "เริ่มวางแผนการเงิน") {
-    handleUserMessage("ช่วยถามคำถามทีละข้อเพื่อวางแผนการเงิน โดยถ้ามีหนี้ให้เริ่มจากแผนจัดการหนี้ก่อน");
-    return;
-  }
-  handleUserMessage(reply);
 }
 
 function enterChat(isNew = false) {
