@@ -1492,10 +1492,11 @@ body[data-mode="desktop"] .health-card {
 
 .advisor-focus {
   position: relative;
+  z-index: 0;
   align-items: stretch;
   min-height: max-content;
   overflow: hidden;
-  margin-bottom: 10px;
+  margin-bottom: 18px;
   padding: 14px;
   border-color: rgba(80, 240, 173, 0.46);
   background:
@@ -1515,9 +1516,12 @@ body[data-mode="desktop"] .health-card {
   background: rgba(80, 240, 173, 0.18);
   filter: blur(18px);
   pointer-events: none;
+  z-index: 0;
 }
 
 .advisor-focus-title {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1525,6 +1529,8 @@ body[data-mode="desktop"] .health-card {
 }
 
 .advisor-focus > p:not(.label) {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
   min-width: 0;
@@ -1551,8 +1557,14 @@ body[data-mode="desktop"] .health-card {
   height: 17px;
 }
 
-.advisor-focus + .primary {
-  margin-top: 8px;
+.assessment-restart {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  flex: 0 0 auto;
+  margin-top: 0;
+  align-self: stretch;
 }
 
 .health-row {

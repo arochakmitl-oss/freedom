@@ -249,7 +249,7 @@ function profileHealthTabMarkup(health, profileLines) {
       </div>
       <p>${escapeHtml(health.adviserFocus)}</p>
     </section>
-    <button class="primary icon-label" type="button" data-action="restartAssessment">${iconMarkup("target")}<span>เริ่มทำแบบประเมินใหม่</span></button>
+    <button class="primary icon-label assessment-restart" type="button" data-action="restartAssessment">${iconMarkup("target")}<span>เริ่มทำแบบประเมินใหม่</span></button>
   `;
 }
 
