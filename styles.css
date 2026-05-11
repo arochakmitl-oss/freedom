@@ -158,10 +158,10 @@ body[data-mode="desktop"] .chat-dock {
   width: 76px;
   height: 36px;
   padding: 3px;
-  border: 1px solid rgba(73, 232, 255, 0.32);
+  border: 1px solid rgba(80, 240, 173, 0.34);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
-  color: var(--cyan);
+  color: var(--emerald);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0;
@@ -179,15 +179,15 @@ body[data-mode="desktop"] .chat-dock {
 }
 
 .mode-tab.active {
-  background: rgba(73, 232, 255, 0.16);
-  color: var(--cyan);
-  box-shadow: 0 0 14px rgba(73, 232, 255, 0.14);
+  background: rgba(80, 240, 173, 0.16);
+  color: var(--emerald);
+  box-shadow: 0 0 14px rgba(80, 240, 173, 0.16);
 }
 
 .mode-toggle:hover {
-  border-color: rgba(73, 232, 255, 0.58);
-  background: rgba(73, 232, 255, 0.16);
-  box-shadow: 0 0 18px rgba(73, 232, 255, 0.14);
+  border-color: rgba(80, 240, 173, 0.58);
+  background: rgba(80, 240, 173, 0.14);
+  box-shadow: 0 0 18px rgba(80, 240, 173, 0.16);
 }
 
 .mode-toggle:active {
@@ -349,6 +349,11 @@ h3 {
   padding: 104px 18px 18px;
   overflow: auto;
   scrollbar-width: none;
+}
+
+body[data-chat="hidden"] .content {
+  bottom: 0;
+  padding-bottom: 24px;
 }
 
 .content::-webkit-scrollbar {
@@ -715,6 +720,190 @@ h3 {
   min-height: 0;
   padding-block: 6px 10px;
   animation: softAppear 0.86s 0.06s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.app-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 4px;
+  border: 1px solid rgba(80, 240, 173, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+}
+
+.app-tabs button,
+.wallet-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.app-tabs button.active,
+.wallet-tabs button.active {
+  color: var(--text);
+  background: rgba(80, 240, 173, 0.17);
+  box-shadow: 0 0 18px rgba(80, 240, 173, 0.15);
+}
+
+.app-tabs button:active,
+.wallet-tabs button:active {
+  transform: scale(0.97);
+}
+
+.wallet-screen {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 18px;
+}
+
+.wallet-hero {
+  --level-color: var(--emerald);
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border-color: color-mix(in srgb, var(--level-color) 35%, transparent);
+}
+
+.wallet-hero h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.wallet-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  overflow-x: auto;
+  border: 1px solid rgba(80, 240, 173, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  scrollbar-width: none;
+}
+
+.wallet-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.wallet-tabs button {
+  flex: 0 0 auto;
+  padding: 0 12px;
+}
+
+.wallet-content {
+  display: grid;
+  gap: 12px;
+}
+
+.wallet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.wallet-stat {
+  display: grid;
+  gap: 6px;
+  min-height: 108px;
+  padding: 13px;
+}
+
+.wallet-stat strong {
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.stat-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--emerald);
+  background: rgba(80, 240, 173, 0.12);
+}
+
+.dashboard-block {
+  --level-color: var(--emerald);
+  border-color: color-mix(in srgb, var(--level-color) 30%, transparent);
+}
+
+.dashboard-head,
+.wallet-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-head strong,
+.wallet-section-head strong {
+  display: block;
+  color: var(--text);
+  font-size: 17px;
+}
+
+.dashboard-score {
+  color: var(--level-color);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.wallet-form-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.managed-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-mini {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--emerald);
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.icon-mini:hover {
+  border-color: rgba(80, 240, 173, 0.54);
+  background: rgba(80, 240, 173, 0.13);
+  box-shadow: 0 0 16px rgba(80, 240, 173, 0.14);
+}
+
+.icon-mini:active {
+  transform: scale(0.92);
+}
+
+.danger-action {
+  color: var(--survival);
 }
 
 .auth-flow {
@@ -1540,5 +1729,18 @@ body[data-mode="desktop"] .health-card {
 
   .content {
     padding-inline: 14px;
+  }
+
+  .wallet-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .managed-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .managed-row .row-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
   }
 }

@@ -96,6 +96,13 @@ let supabaseClient = null;
 let supabaseTable = "freedom_profiles";
 let storageStatus = "local";
 let profileTab = "health";
+let walletTab = "overview";
+let showDebtForm = false;
+let editingDebtIndex = null;
+let showExpenseForm = false;
+let editingExpenseIndex = null;
+let showAssetForm = false;
+let editingAssetIndex = null;
 
 function render() {
   updateChrome();
@@ -103,6 +110,7 @@ function render() {
   document.querySelector("#overlayLayer").innerHTML = getOverlayMarkup();
   const chatDock = document.querySelector("#chatDock");
   const canType = view === "chat" || (view === "login" && authStep === "username");
+  document.body.dataset.chat = canType ? "visible" : "hidden";
   chatDock.hidden = !canType;
   chatDock.innerHTML = canType ? getComposerMarkup() : "";
   wire();
@@ -139,6 +147,7 @@ function getScreenTitle() {
   if (view === "login") return authStep === "pin" ? "ใส่ PIN 6 หลัก" : "เข้าสู่ Freedom";
   if (view === "whale") return "Freedom กำลังเชื่อมต่อ";
   if (view === "debt") return "เพิ่มหนี้ใหม่";
+  if (view === "wallet") return "กระเป๋าการเงินของฉัน";
   if (flowMode === "onboarding") return "Freedom กำลังรู้จักคุณ";
   return `สวัสดี ${currentUser}`;
 }
@@ -148,6 +157,7 @@ function getViewMarkup() {
   if (view === "login") return `${toast}${loginMarkup()}`;
   if (view === "whale") return `${toast}${whaleIntroMarkup()}`;
   if (view === "debt") return `${toast}${debtMarkup()}`;
+  if (view === "wallet") return `${toast}${walletMarkup()}`;
   return `${toast}${chatMarkup()}`;
 }
 
@@ -311,6 +321,7 @@ function initialAuthConversation() {
 function chatMarkup() {
   return `
     <article class="screen active chat-only">
+      ${appTabsMarkup()}
       <section class="chat-panel" aria-label="บทสนทนากับ Freedom">
         ${conversation.map((message) => `<div class="bubble ${message.role}">${escapeHtml(message.text)}</div>`).join("")}
         <div class="bubble ai thinking-bubble" ${isThinking ? "" : "hidden"}>
@@ -318,6 +329,257 @@ function chatMarkup() {
         </div>
       </section>
     </article>
+  `;
+}
+
+function appTabsMarkup() {
+  if (!(profile && profile.known)) return "";
+  return `
+    <nav class="app-tabs" aria-label="เมนูหลัก">
+      <button class="${view === "chat" ? "active" : ""}" type="button" data-main-view="chat">${iconMarkup("sparkles")}<span>แชท</span></button>
+      <button class="${view === "wallet" ? "active" : ""}" type="button" data-main-view="wallet">${iconMarkup("wallet")}<span>กระเป๋าการเงิน</span></button>
+    </nav>
+  `;
+}
+
+function walletMarkup() {
+  const health = getFinancialHealth();
+  return `
+    <article class="screen active wallet-screen">
+      ${appTabsMarkup()}
+      <section class="wallet-hero glass" style="--level-color: ${health.color}">
+        <div class="health-orb ${health.slug}">${iconMarkup(health.icon)}</div>
+        <div>
+          <p class="eyebrow">Financial Wallet</p>
+          <h2>${health.level}</h2>
+          <p class="muted">${escapeHtml(health.statusIntro)}</p>
+        </div>
+      </section>
+      <nav class="wallet-tabs" aria-label="เมนูกระเป๋าการเงิน">
+        ${walletTabButton("overview", "ภาพรวม", "trend")}
+        ${walletTabButton("debt", "หนี้", "card")}
+        ${walletTabButton("expenses", "ภาระ/เดือน", "wallet")}
+        ${walletTabButton("assets", "Asset", "coins")}
+        ${walletTabButton("health", "สุขภาพ", "heartPulse")}
+      </nav>
+      <section class="wallet-content">
+        ${walletTab === "debt" ? walletDebtTabMarkup() : ""}
+        ${walletTab === "expenses" ? walletExpensesTabMarkup() : ""}
+        ${walletTab === "assets" ? walletAssetsTabMarkup() : ""}
+        ${walletTab === "health" ? profileHealthTabMarkup(health, getFinancialProfileLines()) : ""}
+        ${walletTab === "overview" ? walletOverviewMarkup(health) : ""}
+      </section>
+    </article>
+  `;
+}
+
+function walletTabButton(tab, label, icon) {
+  return `<button class="${walletTab === tab ? "active" : ""}" type="button" data-wallet-tab="${tab}">${iconMarkup(icon)}<span>${label}</span></button>`;
+}
+
+function walletOverviewMarkup(health) {
+  const stats = getWalletStats();
+  return `
+    <section class="wallet-grid">
+      ${walletStatMarkup("ยอดหนี้รวม", `฿${stats.totalDebt.toLocaleString("th-TH")}`, "card")}
+      ${walletStatMarkup("ภาระต่อเดือน", `฿${stats.monthlyOutflow.toLocaleString("th-TH")}`, "wallet")}
+      ${walletStatMarkup("Asset รวม", `฿${stats.totalAssets.toLocaleString("th-TH")}`, "coins")}
+      ${walletStatMarkup("Net worth", `฿${stats.netWorth.toLocaleString("th-TH")}`, "trend")}
+    </section>
+    <section class="health-block dashboard-block" style="--level-color: ${health.color}">
+      <div class="dashboard-head">
+        <div>
+          <p class="label">สุขภาพการเงิน</p>
+          <strong>${health.level}</strong>
+        </div>
+        <span class="dashboard-score">${health.progress}%</span>
+      </div>
+      <div class="health-meter" aria-label="คะแนนสุขภาพการเงิน ${health.progress} เปอร์เซ็นต์">
+        <span style="--width: ${health.progress}%"></span>
+      </div>
+      <p class="muted">${escapeHtml(health.meaning)}</p>
+    </section>
+    <section class="health-block next-level">
+      <p class="label">ก้าวสู่ระดับถัดไป</p>
+      <strong>${escapeHtml(health.nextLevel)}</strong>
+      <ul>
+        ${health.conditions.map((condition, index) => `
+          <li class="${health.completedConditions[index] ? "done" : ""}">
+            <span class="checkmark">${health.completedConditions[index] ? "✓" : ""}</span>
+            <span>${escapeHtml(condition)}</span>
+          </li>
+        `).join("")}
+      </ul>
+    </section>
+  `;
+}
+
+function walletStatMarkup(label, value, icon) {
+  return `
+    <div class="wallet-stat glass">
+      <span class="stat-icon">${iconMarkup(icon)}</span>
+      <p class="label">${label}</p>
+      <strong>${value}</strong>
+    </div>
+  `;
+}
+
+function walletDebtTabMarkup() {
+  const total = profile.debts.reduce((sum, debt) => sum + Number(debt.amount || 0), 0);
+  const minimum = profile.debts.reduce((sum, debt) => sum + Number(debt.min || 0), 0);
+  const averageRate = profile.debts.length
+    ? profile.debts.reduce((sum, debt) => sum + Number(debt.rate || 0), 0) / profile.debts.length
+    : 0;
+  return `
+    <section class="debt-dashboard">
+      <div class="debt-stat primary-stat">
+        <p class="label">ยอดหนี้รวม</p>
+        <strong>฿${total.toLocaleString("th-TH")}</strong>
+      </div>
+      <div class="debt-stat">
+        <p class="label">ขั้นต่ำ/เดือน</p>
+        <strong>฿${minimum.toLocaleString("th-TH")}</strong>
+      </div>
+      <div class="debt-stat">
+        <p class="label">ดอกเฉลี่ย</p>
+        <strong>${averageRate.toFixed(1)}%</strong>
+      </div>
+    </section>
+    <section class="health-block">
+      <div class="wallet-section-head">
+        <p class="label">รายการหนี้</p>
+        <button class="secondary compact icon-label" type="button" data-action="showDebtForm">${iconMarkup("plus")}<span>เพิ่มหนี้</span></button>
+      </div>
+      ${profile.debts.length ? profile.debts.map((debt, index) => walletDebtRowMarkup(debt, index)).join("") : `<p class="muted">ยังไม่มีรายการหนี้ เพิ่มรายการแรกเพื่อให้ Freedom วิเคราะห์ภาระรายเดือนและลำดับการจ่าย</p>`}
+    </section>
+    ${showDebtForm ? walletDebtFormMarkup() : ""}
+  `;
+}
+
+function walletDebtRowMarkup(debt, index) {
+  return `
+    <div class="debt-list-row managed-row">
+      <div>
+        <strong>${escapeHtml(debt.name || "หนี้ไม่มีชื่อ")}</strong>
+        <span>ดอก ${Number(debt.rate || 0)}% · ขั้นต่ำ ฿${Number(debt.min || 0).toLocaleString("th-TH")}</span>
+      </div>
+      <b>฿${Number(debt.amount || 0).toLocaleString("th-TH")}</b>
+      <div class="row-actions">
+        <button class="icon-mini" type="button" data-edit-debt="${index}" aria-label="แก้ไขหนี้">${iconMarkup("edit")}</button>
+        <button class="icon-mini danger-action" type="button" data-delete-debt="${index}" aria-label="ลบหนี้">${iconMarkup("trash")}</button>
+      </div>
+    </div>
+  `;
+}
+
+function walletDebtFormMarkup() {
+  const debt = editingDebtIndex !== null ? profile.debts[editingDebtIndex] || {} : {};
+  return `
+    <section class="glass wallet-form-card">
+      <p class="label">${editingDebtIndex !== null ? "แก้ไขหนี้" : "เพิ่มหนี้ใหม่"}</p>
+      <form class="form" id="walletDebtForm">
+        ${fieldMarkupWithValue("walletDebtName", "ชื่อหนี้", "เช่น บัตรเครดิต", "text", debt.name || "")}
+        ${fieldMarkupWithValue("walletDebtAmount", "ยอดคงเหลือ", "เช่น 35000", "number", debt.amount || "")}
+        ${fieldMarkupWithValue("walletDebtRate", "ดอกเบี้ยต่อปี (%)", "เช่น 18", "number", debt.rate || "")}
+        ${fieldMarkupWithValue("walletDebtMin", "ยอดขั้นต่ำต่อเดือน", "เช่น 1500", "number", debt.min || "")}
+        <div class="button-row tight-actions">
+          <button class="secondary icon-label" type="button" data-action="cancelWalletDebt">${iconMarkup("x")}<span>ยกเลิก</span></button>
+          <button class="primary icon-label" type="submit">${iconMarkup("check")}<span>บันทึก</span></button>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
+function walletExpensesTabMarkup() {
+  const total = profile.expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  return `
+    <section class="health-block">
+      <div class="wallet-section-head">
+        <div>
+          <p class="label">ภาระค่าใช้จ่ายต่อเดือน</p>
+          <strong>฿${total.toLocaleString("th-TH")}</strong>
+        </div>
+        <button class="secondary compact icon-label" type="button" data-action="showExpenseForm">${iconMarkup("plus")}<span>เพิ่ม</span></button>
+      </div>
+      ${profile.expenses.length ? profile.expenses.map((item, index) => walletSimpleRowMarkup(item, index, "expense")).join("") : `<p class="muted">ยังไม่มีภาระค่าใช้จ่ายประจำ เพิ่มค่าเช่า ค่าน้ำไฟ ค่าเดินทาง หรือ subscription ที่ต้องจ่ายทุกเดือน</p>`}
+    </section>
+    ${showExpenseForm ? walletExpenseFormMarkup() : ""}
+  `;
+}
+
+function walletExpenseFormMarkup() {
+  const item = editingExpenseIndex !== null ? profile.expenses[editingExpenseIndex] || {} : {};
+  return `
+    <section class="glass wallet-form-card">
+      <p class="label">${editingExpenseIndex !== null ? "แก้ไขภาระรายเดือน" : "เพิ่มภาระรายเดือน"}</p>
+      <form class="form" id="walletExpenseForm">
+        ${fieldMarkupWithValue("walletExpenseName", "ชื่อรายการ", "เช่น ค่าเช่า", "text", item.name || "")}
+        ${fieldMarkupWithValue("walletExpenseAmount", "จำนวนต่อเดือน", "เช่น 9000", "number", item.amount || "")}
+        <div class="button-row tight-actions">
+          <button class="secondary icon-label" type="button" data-action="cancelWalletExpense">${iconMarkup("x")}<span>ยกเลิก</span></button>
+          <button class="primary icon-label" type="submit">${iconMarkup("check")}<span>บันทึก</span></button>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
+function walletAssetsTabMarkup() {
+  const total = profile.assets.reduce((sum, item) => sum + Number(item.value || 0), 0);
+  return `
+    <section class="health-block">
+      <div class="wallet-section-head">
+        <div>
+          <p class="label">Asset ที่มี</p>
+          <strong>฿${total.toLocaleString("th-TH")}</strong>
+        </div>
+        <button class="secondary compact icon-label" type="button" data-action="showAssetForm">${iconMarkup("plus")}<span>เพิ่ม</span></button>
+      </div>
+      ${profile.assets.length ? profile.assets.map((item, index) => walletSimpleRowMarkup(item, index, "asset")).join("") : `<p class="muted">ยังไม่มี asset เพิ่มหุ้น ทอง กองทุน เงินสด หรือทรัพย์สินอื่น เพื่อให้ภาพรวมสุทธิชัดขึ้น</p>`}
+    </section>
+    ${showAssetForm ? walletAssetFormMarkup() : ""}
+  `;
+}
+
+function walletAssetFormMarkup() {
+  const item = editingAssetIndex !== null ? profile.assets[editingAssetIndex] || {} : {};
+  return `
+    <section class="glass wallet-form-card">
+      <p class="label">${editingAssetIndex !== null ? "แก้ไข asset" : "เพิ่ม asset"}</p>
+      <form class="form" id="walletAssetForm">
+        ${fieldMarkupWithValue("walletAssetName", "ชื่อ asset", "เช่น หุ้น AOT", "text", item.name || "")}
+        <div class="field">
+          <label for="walletAssetType">ประเภท</label>
+          <select id="walletAssetType" required>
+            ${["หุ้น", "ทอง", "กองทุน", "เงินสด", "อื่น ๆ"].map((type) => `<option value="${type}" ${item.type === type ? "selected" : ""}>${type}</option>`).join("")}
+          </select>
+        </div>
+        ${fieldMarkupWithValue("walletAssetValue", "มูลค่าปัจจุบัน", "เช่น 50000", "number", item.value || "")}
+        <div class="button-row tight-actions">
+          <button class="secondary icon-label" type="button" data-action="cancelWalletAsset">${iconMarkup("x")}<span>ยกเลิก</span></button>
+          <button class="primary icon-label" type="submit">${iconMarkup("check")}<span>บันทึก</span></button>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
+function walletSimpleRowMarkup(item, index, kind) {
+  const value = kind === "asset" ? Number(item.value || 0) : Number(item.amount || 0);
+  const label = kind === "asset" ? item.type || "Asset" : "รายเดือน";
+  return `
+    <div class="debt-list-row managed-row">
+      <div>
+        <strong>${escapeHtml(item.name || "ไม่มีชื่อ")}</strong>
+        <span>${escapeHtml(label)}</span>
+      </div>
+      <b>฿${value.toLocaleString("th-TH")}</b>
+      <div class="row-actions">
+        <button class="icon-mini" type="button" data-edit-${kind}="${index}" aria-label="แก้ไข">${iconMarkup("edit")}</button>
+        <button class="icon-mini danger-action" type="button" data-delete-${kind}="${index}" aria-label="ลบ">${iconMarkup("trash")}</button>
+      </div>
+    </div>
   `;
 }
 
@@ -369,6 +631,15 @@ function fieldMarkup(id, label, placeholder, type) {
   `;
 }
 
+function fieldMarkupWithValue(id, label, placeholder, type, value) {
+  return `
+    <div class="field">
+      <label for="${id}">${label}</label>
+      <input id="${id}" type="${type}" placeholder="${placeholder}" value="${escapeHtml(value)}" required />
+    </div>
+  `;
+}
+
 function getComposerMarkup() {
   const placeholder = view === "login" ? "พิมพ์ username..." : "พิมพ์สิ่งที่อยากเล่า...";
   return `
@@ -392,6 +663,9 @@ function iconMarkup(name) {
     card: "hgi-credit-card",
     trend: "hgi-chart-up",
     wallet: "hgi-wallet-01",
+    coins: "hgi-coins-01",
+    edit: "hgi-pencil-edit-02",
+    trash: "hgi-delete-02",
     shield: "hgi-shield-01",
     heartPulse: "hgi-heart-check",
     legacy: "hgi-sparkles",
@@ -427,6 +701,23 @@ function pinPadMarkup() {
 
 function wire() {
   document.querySelector("#debtForm")?.addEventListener("submit", handleDebt);
+  document.querySelector("#walletDebtForm")?.addEventListener("submit", handleWalletDebtSubmit);
+  document.querySelector("#walletExpenseForm")?.addEventListener("submit", handleWalletExpenseSubmit);
+  document.querySelector("#walletAssetForm")?.addEventListener("submit", handleWalletAssetSubmit);
+  document.querySelectorAll("[data-main-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      view = button.dataset.mainView;
+      isHealthOpen = false;
+      render();
+    });
+  });
+  document.querySelectorAll("[data-wallet-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      walletTab = button.dataset.walletTab;
+      resetWalletForms();
+      render();
+    });
+  });
   document.querySelector("[data-action='addDebt']")?.addEventListener("click", () => {
     view = "debt";
     render();
@@ -449,6 +740,66 @@ function wire() {
     isHealthOpen = false;
     view = "debt";
     render();
+  });
+  document.querySelector("[data-action='showDebtForm']")?.addEventListener("click", () => {
+    showDebtForm = true;
+    editingDebtIndex = null;
+    render();
+  });
+  document.querySelector("[data-action='cancelWalletDebt']")?.addEventListener("click", () => {
+    showDebtForm = false;
+    editingDebtIndex = null;
+    render();
+  });
+  document.querySelector("[data-action='showExpenseForm']")?.addEventListener("click", () => {
+    showExpenseForm = true;
+    editingExpenseIndex = null;
+    render();
+  });
+  document.querySelector("[data-action='cancelWalletExpense']")?.addEventListener("click", () => {
+    showExpenseForm = false;
+    editingExpenseIndex = null;
+    render();
+  });
+  document.querySelector("[data-action='showAssetForm']")?.addEventListener("click", () => {
+    showAssetForm = true;
+    editingAssetIndex = null;
+    render();
+  });
+  document.querySelector("[data-action='cancelWalletAsset']")?.addEventListener("click", () => {
+    showAssetForm = false;
+    editingAssetIndex = null;
+    render();
+  });
+  document.querySelectorAll("[data-edit-debt]").forEach((button) => {
+    button.addEventListener("click", () => {
+      editingDebtIndex = Number(button.dataset.editDebt);
+      showDebtForm = true;
+      render();
+    });
+  });
+  document.querySelectorAll("[data-delete-debt]").forEach((button) => {
+    button.addEventListener("click", () => deleteWalletItem("debts", Number(button.dataset.deleteDebt)));
+  });
+  document.querySelectorAll("[data-edit-expense]").forEach((button) => {
+    button.addEventListener("click", () => {
+      editingExpenseIndex = Number(button.dataset.editExpense);
+      showExpenseForm = true;
+      render();
+    });
+  });
+  document.querySelectorAll("[data-delete-expense]").forEach((button) => {
+    button.addEventListener("click", () => deleteWalletItem("expenses", Number(button.dataset.deleteExpense)));
+  });
+  document.querySelectorAll("[data-edit-asset]").forEach((button) => {
+    button.addEventListener("click", () => {
+      editingAssetIndex = Number(button.dataset.editAsset);
+      showAssetForm = true;
+      render();
+    });
+  });
+  document.querySelectorAll("[data-delete-asset]").forEach((button) => {
+    button.addEventListener("click", () => deleteWalletItem("assets", Number(button.dataset.deleteAsset)));
   });
   const modeToggle = document.querySelector("#modeToggle");
   if (modeToggle) modeToggle.onclick = toggleViewMode;
@@ -481,6 +832,77 @@ function handleDebt(event) {
     text: `บันทึกหนี้ "${debt.name}" แล้วครับ ขั้นต่อไป Freedom จะช่วยดูว่าหนี้นี้ควรอยู่ตรงไหนในแผนการเงินของคุณ`,
   });
   render();
+}
+
+function handleWalletDebtSubmit(event) {
+  event.preventDefault();
+  const debt = {
+    name: document.querySelector("#walletDebtName").value.trim(),
+    amount: Number(document.querySelector("#walletDebtAmount").value),
+    rate: Number(document.querySelector("#walletDebtRate").value),
+    min: Number(document.querySelector("#walletDebtMin").value),
+  };
+  if (editingDebtIndex !== null) {
+    profile.debts[editingDebtIndex] = debt;
+  } else {
+    profile.debts.push(debt);
+  }
+  showDebtForm = false;
+  editingDebtIndex = null;
+  saveUsers();
+  render();
+}
+
+function handleWalletExpenseSubmit(event) {
+  event.preventDefault();
+  const item = {
+    name: document.querySelector("#walletExpenseName").value.trim(),
+    amount: Number(document.querySelector("#walletExpenseAmount").value),
+  };
+  if (editingExpenseIndex !== null) {
+    profile.expenses[editingExpenseIndex] = item;
+  } else {
+    profile.expenses.push(item);
+  }
+  showExpenseForm = false;
+  editingExpenseIndex = null;
+  saveUsers();
+  render();
+}
+
+function handleWalletAssetSubmit(event) {
+  event.preventDefault();
+  const item = {
+    name: document.querySelector("#walletAssetName").value.trim(),
+    type: document.querySelector("#walletAssetType").value,
+    value: Number(document.querySelector("#walletAssetValue").value),
+  };
+  if (editingAssetIndex !== null) {
+    profile.assets[editingAssetIndex] = item;
+  } else {
+    profile.assets.push(item);
+  }
+  showAssetForm = false;
+  editingAssetIndex = null;
+  saveUsers();
+  render();
+}
+
+function deleteWalletItem(collection, index) {
+  if (!profile?.[collection] || !Number.isInteger(index)) return;
+  profile[collection].splice(index, 1);
+  resetWalletForms();
+  saveUsers();
+  render();
+}
+
+function resetWalletForms() {
+  showDebtForm = false;
+  editingDebtIndex = null;
+  showExpenseForm = false;
+  editingExpenseIndex = null;
+  showAssetForm = false;
+  editingAssetIndex = null;
 }
 
 function enterChat(isNew = false) {
@@ -522,7 +944,10 @@ function handleUserMessage(text) {
     return;
   }
   if (text.includes("เพิ่มหนี้")) {
-    view = "debt";
+    view = "wallet";
+    walletTab = "debt";
+    showDebtForm = true;
+    editingDebtIndex = null;
     render();
     return;
   }
@@ -818,7 +1243,13 @@ function buildUserContext() {
   const debts = profile.debts.length
     ? profile.debts.map((debt) => `${debt.name}: ยอด ${debt.amount}, ดอก ${debt.rate}%, ขั้นต่ำ ${debt.min}`).join("; ")
     : "ยังไม่มีรายการหนี้";
-  return `บริบทผู้ใช้ ${currentUser}: ประเภทเป้าหมาย/ปัญหา ${profile.onboarding.financialType || "-"}, ปัญหาที่กังวล ${profile.onboarding.moneyProblem || "-"}, รายได้ ${profile.onboarding.income || "-"}, เป้าหมาย ${profile.onboarding.goal || "-"}, หนี้: ${debts}. คุณคือผู้ช่วยการเงินส่วนตัวภาษาไทย ให้ถามทีละข้อแบบไม่ตัดสิน ถ้าผู้ใช้มีหนี้ให้ช่วยจัดลำดับแผนปลดหนี้ก่อน แล้วค่อยต่อยอดเงินสำรองและลงทุน`;
+  const expenses = profile.expenses.length
+    ? profile.expenses.map((item) => `${item.name}: ${item.amount}/เดือน`).join("; ")
+    : "ยังไม่มีภาระรายเดือน";
+  const assets = profile.assets.length
+    ? profile.assets.map((item) => `${item.type || "asset"} ${item.name}: ${item.value}`).join("; ")
+    : "ยังไม่มี asset";
+  return `บริบทผู้ใช้ ${currentUser}: ประเภทเป้าหมาย/ปัญหา ${profile.onboarding.financialType || "-"}, ปัญหาที่กังวล ${profile.onboarding.moneyProblem || "-"}, รายได้ ${profile.onboarding.income || "-"}, เป้าหมาย ${profile.onboarding.goal || "-"}, หนี้: ${debts}. ภาระรายเดือน: ${expenses}. Asset: ${assets}. คุณคือผู้ช่วยการเงินส่วนตัวภาษาไทย ให้ถามทีละข้อแบบไม่ตัดสิน ถ้าผู้ใช้มีหนี้ให้ช่วยจัดลำดับแผนปลดหนี้ก่อน แล้วค่อยต่อยอดเงินสำรองและลงทุน`;
 }
 
 function getProfileSummary() {
@@ -831,6 +1262,21 @@ function getKnowingPercent() {
   if (!profile) return 0;
   const answered = onboardingQuestions.filter((item) => String(profile.onboarding[item.key] || "").trim()).length;
   return Math.round((answered / onboardingQuestions.length) * 100);
+}
+
+function getWalletStats() {
+  const totalDebt = profile.debts.reduce((sum, debt) => sum + Number(debt.amount || 0), 0);
+  const minimumPayment = profile.debts.reduce((sum, debt) => sum + Number(debt.min || 0), 0);
+  const fixedExpenses = profile.expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const totalAssets = profile.assets.reduce((sum, item) => sum + Number(item.value || 0), 0);
+  return {
+    totalDebt,
+    minimumPayment,
+    fixedExpenses,
+    monthlyOutflow: minimumPayment + fixedExpenses,
+    totalAssets,
+    netWorth: totalAssets - totalDebt,
+  };
 }
 
 function getFinancialHealth() {
@@ -1139,6 +1585,8 @@ function normalizeProfile(storedProfile, fallbackPin = "") {
     known: Boolean(safeProfile.known),
     onboarding: safeProfile.onboarding && typeof safeProfile.onboarding === "object" ? safeProfile.onboarding : {},
     debts: Array.isArray(safeProfile.debts) ? safeProfile.debts : [],
+    expenses: Array.isArray(safeProfile.expenses) ? safeProfile.expenses : [],
+    assets: Array.isArray(safeProfile.assets) ? safeProfile.assets : [],
     checkpoints: safeProfile.checkpoints && typeof safeProfile.checkpoints === "object" ? safeProfile.checkpoints : {},
   };
 }
@@ -1171,7 +1619,9 @@ async function refreshStatus() {
 
 document.querySelector("#profileButton")?.addEventListener("click", () => {
   if (!(profile && profile.known)) return;
-  isHealthOpen = true;
+  isHealthOpen = false;
+  walletTab = "overview";
+  view = "wallet";
   render();
 });
 
