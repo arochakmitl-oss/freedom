@@ -242,8 +242,11 @@ function profileHealthTabMarkup(health, profileLines) {
       <p class="label">ความหมายของระดับนี้</p>
       <p>${escapeHtml(health.meaning)}</p>
     </section>
-    <section class="health-block ocean-journey-block">
-      <p class="label">AI adviser focus</p>
+    <section class="health-block ocean-journey-block advisor-focus" style="--level-color: ${health.color}">
+      <div class="advisor-focus-title">
+        <span class="advisor-suggest-icon">${iconMarkup("aiSuggest")}</span>
+        <p class="label">AI adviser focus</p>
+      </div>
       <p>${escapeHtml(health.adviserFocus)}</p>
     </section>
     <button class="primary icon-label" type="button" data-action="restartAssessment">${iconMarkup("target")}<span>เริ่มทำแบบประเมินใหม่</span></button>
@@ -385,7 +388,7 @@ function walletMarkup() {
         </div>
       </section>
       <nav class="wallet-tabs" aria-label="เมนูกระเป๋าการเงิน">
-        ${walletTabButton("overview", "ภาพรวม", "trend")}
+        ${walletTabButton("overview", "ภาพรวม", "grid")}
         ${walletTabButton("debt", "หนี้", "card")}
         ${walletTabButton("expenses", "ภาระ/เดือน", "wallet")}
         ${walletTabButton("assets", "Asset", "coins")}
@@ -716,6 +719,9 @@ function getComposerMarkup() {
 }
 
 function iconMarkup(name) {
+  if (name === "grid") {
+    return `<span class="grid-glyph ui-icon" aria-hidden="true"><span></span><span></span><span></span><span></span></span>`;
+  }
   const icons = {
     phone: "hgi-smart-phone-01",
     monitor: "hgi-computer",
@@ -731,6 +737,7 @@ function iconMarkup(name) {
     edit: "hgi-pencil-edit-02",
     trash: "hgi-delete-02",
     shield: "hgi-shield-01",
+    aiSuggest: "hgi-ai-chat-02",
     heartPulse: "hgi-heart-check",
     legacy: "hgi-sparkles",
     list: "hgi-task-01",

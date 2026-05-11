@@ -718,8 +718,14 @@ body[data-chat="hidden"] .content {
   flex: 1;
   align-content: end;
   min-height: 0;
+  overflow: auto;
   padding-block: 6px 10px;
   animation: softAppear 0.86s 0.06s cubic-bezier(0.16, 1, 0.3, 1) both;
+  scrollbar-width: none;
+}
+
+.chat-panel::-webkit-scrollbar {
+  display: none;
 }
 
 .app-tabs {
@@ -732,6 +738,7 @@ body[data-chat="hidden"] .content {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(18px);
+  flex: 0 0 auto;
 }
 
 .app-tabs button,
@@ -765,7 +772,11 @@ body[data-chat="hidden"] .content {
 
 .wallet-screen {
   display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 12px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   padding-bottom: 18px;
 }
 
@@ -850,11 +861,15 @@ body[data-chat="hidden"] .content {
 .wallet-tabs {
   display: flex;
   gap: 6px;
+  flex: 0 0 auto;
+  margin: 6px 0 10px;
   padding: 4px;
   overflow-x: auto;
+  overflow-y: hidden;
   border: 1px solid rgba(80, 240, 173, 0.16);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
   scrollbar-width: none;
 }
 
@@ -867,9 +882,37 @@ body[data-chat="hidden"] .content {
   padding: 0 12px;
 }
 
+.grid-glyph {
+  display: grid;
+  grid-template-columns: repeat(2, 6px);
+  grid-template-rows: repeat(2, 6px);
+  gap: 3px;
+  place-content: center;
+  width: 18px;
+  height: 18px;
+}
+
+.grid-glyph span {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: currentColor;
+  box-shadow: 0 0 8px rgba(80, 240, 173, 0.18);
+}
+
 .wallet-content {
   display: grid;
   gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+}
+
+.wallet-content::-webkit-scrollbar {
+  display: none;
 }
 
 .wallet-grid {
@@ -998,11 +1041,22 @@ body[data-chat="hidden"] .content {
 }
 
 .chat-only {
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
+}
+
+.screen.active.chat-only {
+  display: flex;
+}
+
+.screen.active.wallet-screen,
+.screen.active.post-auth-screen {
+  display: grid;
 }
 
 .whale-intro {
@@ -1412,6 +1466,40 @@ body[data-mode="desktop"] .health-card {
 .ocean-journey-block p:not(.label) {
   color: var(--muted);
   line-height: 1.58;
+}
+
+.advisor-focus {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--level-color) 42%, transparent);
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--level-color) 22%, transparent), transparent 38%),
+    linear-gradient(145deg, rgba(80, 240, 173, 0.12), rgba(255, 255, 255, 0.065));
+  box-shadow:
+    0 0 26px color-mix(in srgb, var(--level-color) 18%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.advisor-focus-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.advisor-suggest-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--level-color);
+  background: color-mix(in srgb, var(--level-color) 16%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--level-color) 24%, transparent);
+}
+
+.advisor-suggest-icon .ui-icon {
+  width: 17px;
+  height: 17px;
 }
 
 .health-row {
