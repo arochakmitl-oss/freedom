@@ -6,14 +6,14 @@ const onboardingQuestions = [
   {
     key: "financialType",
     title: "ตอนนี้อยากให้ Freedom ช่วยเรื่องการเงินด้านไหน",
-    helper: "เลือกเรื่องหลักก่อน เพื่อให้ฉันวาง flow ให้ตรงกับชีวิตจริงของคุณ",
+    helper: "เลือกเรื่องหลักก่อน เพื่อให้ผมวาง flow ให้ตรงกับชีวิตจริงของคุณ",
     placeholder: "เช่น มีหนี้",
     options: ["มีหนี้", "อยากลงทุน", "คุมรายจ่าย", "สร้างเงินสำรอง"],
   },
   {
     key: "moneyProblem",
     title: "ปัญหาการเงินที่กวนใจที่สุดคืออะไร",
-    helper: "ตอบสั้น ๆ ได้เลย ฉันจะไม่ตัดสิน แต่จะช่วยจัดลำดับสิ่งที่ควรทำ",
+    helper: "ตอบสั้น ๆ ได้เลย ผมจะไม่ตัดสิน แต่จะช่วยจัดลำดับสิ่งที่ควรทำ",
     placeholder: "เช่น จ่ายบัตรเครดิตขั้นต่ำทุกเดือน",
     options: ["หนี้หลายก้อน", "เงินไม่พอปลายเดือน", "ยังไม่กล้าลงทุน"],
   },
@@ -146,6 +146,7 @@ function updateChrome() {
 function getScreenTitle() {
   if (view === "login") return authStep === "pin" ? "ใส่ PIN 6 หลัก" : "เข้าสู่ Freedom";
   if (view === "whale") return "Freedom กำลังเชื่อมต่อ";
+  if (view === "postAuth") return "ยินดีต้อนรับสู่ Freedom";
   if (view === "debt") return "เพิ่มหนี้ใหม่";
   if (view === "wallet") return "กระเป๋าการเงินของฉัน";
   if (flowMode === "onboarding") return "Freedom กำลังรู้จักคุณ";
@@ -156,6 +157,7 @@ function getViewMarkup() {
   const toast = authToast ? authToastMarkup() : "";
   if (view === "login") return `${toast}${loginMarkup()}`;
   if (view === "whale") return `${toast}${whaleIntroMarkup()}`;
+  if (view === "postAuth") return `${toast}${postAuthMarkup()}`;
   if (view === "debt") return `${toast}${debtMarkup()}`;
   if (view === "wallet") return `${toast}${walletMarkup()}`;
   return `${toast}${chatMarkup()}`;
@@ -169,7 +171,7 @@ function whaleIntroMarkup() {
       <div class="whale-copy">
         <p class="eyebrow">Authentication success</p>
         <h2>Freedom กำลังปรับโหมดให้เข้ากับคุณ</h2>
-        <p class="muted">${whaleIntroTarget === "onboarding" ? "อีกสักครู่จะเริ่มถามคำถามแรกในแชท" : "อีกสักครู่จะพาคุณกลับเข้าสู่แชทการเงินส่วนตัว"}</p>
+        <p class="muted">อีกสักครู่ผมจะพาคุณไปเลือกว่าจะเริ่มคุย หรือเพิ่มข้อมูลในกระเป๋าการเงินก่อน</p>
       </div>
     </article>
   `;
@@ -313,9 +315,35 @@ function initialAuthConversation() {
   return [
     {
       role: "ai",
-      text: "สวัสดีครับ ฉันคือ Freedom ก่อนเริ่มใช้งาน พิมพ์ username ของคุณในช่องแชทด้านล่างได้เลย",
+      text: "สวัสดีครับ ผมคือ Freedom ก่อนเริ่มใช้งาน พิมพ์ username ของคุณในช่องแชทด้านล่างได้เลย",
     },
   ];
+}
+
+function postAuthMarkup() {
+  const isKnown = Boolean(profile?.known);
+  return `
+    <article class="screen active post-auth-screen">
+      ${appTabsMarkup()}
+      <section class="glass post-auth-card">
+        <p class="eyebrow">Authentication success</p>
+        <h2>${isKnown ? `ยินดีต้อนรับกลับครับ ${currentUser}` : `ยินดีที่ได้รู้จักครับ ${currentUser}`}</h2>
+        <p class="muted">${isKnown ? "วันนี้อยากเริ่มจากคุยกับผม หรือจัดข้อมูลกระเป๋าการเงินก่อนก็ได้ครับ" : "ก่อนให้คำแนะนำละเอียด ผมอยากให้คุณเลือกว่าจะเริ่มคุยทำความรู้จัก หรือเพิ่มข้อมูลในกระเป๋าการเงินก่อน"}</p>
+        <div class="choice-grid">
+          <button class="choice-card glass" type="button" data-action="startChatChoice">
+            ${iconMarkup("sparkles")}
+            <span>เริ่มแชท</span>
+            <small>${isKnown ? "คุยต่อจากบริบทเดิม" : "ตอบคำถาม onboarding ในแชท"}</small>
+          </button>
+          <button class="choice-card glass" type="button" data-action="openWalletChoice">
+            ${iconMarkup("wallet")}
+            <span>เพิ่มข้อมูลในกระเป๋าเงิน</span>
+            <small>หนี้ ภาระรายเดือน และ asset</small>
+          </button>
+        </div>
+      </section>
+    </article>
+  `;
 }
 
 function chatMarkup() {
@@ -328,12 +356,13 @@ function chatMarkup() {
           <span class="thinking"><span></span><span></span><span></span></span>
         </div>
       </section>
+      ${suggestionChipsMarkup()}
     </article>
   `;
 }
 
 function appTabsMarkup() {
-  if (!(profile && profile.known)) return "";
+  if (!(profile && currentUser)) return "";
   return `
     <nav class="app-tabs" aria-label="เมนูหลัก">
       <button class="${view === "chat" ? "active" : ""}" type="button" data-main-view="chat">${iconMarkup("sparkles")}<span>แชท</span></button>
@@ -583,6 +612,41 @@ function walletSimpleRowMarkup(item, index, kind) {
   `;
 }
 
+function suggestionChipsMarkup() {
+  if (view !== "chat" || isThinking) return "";
+  const suggestions = getContextSuggestions();
+  if (!suggestions.length) return "";
+  return `
+    <section class="suggestion-strip" aria-label="คำตอบแนะนำ">
+      ${suggestions.map((text) => `<button class="suggestion-chip" type="button" data-suggestion="${escapeHtml(text)}">${escapeHtml(text)}</button>`).join("")}
+    </section>
+  `;
+}
+
+function getContextSuggestions() {
+  const lastAiText = [...conversation].reverse().find((message) => message.role === "ai")?.text || "";
+  const libraries = [
+    ["มีหนี้", "อยากคุมรายจ่าย", "อยากสร้างเงินสำรอง", "อยากเริ่มลงทุน"],
+    ["หนี้หลายก้อน", "เงินไม่พอปลายเดือน", "จ่ายขั้นต่ำอยู่", "อยากลดความเครียดเรื่องเงิน"],
+    ["25000", "45000", "80000", "120000"],
+    ["ปลดหนี้ให้หมด", "มีเงินสำรอง 6 เดือน", "ลงทุนแบบสม่ำเสมอ", "มีรายได้เสริม"],
+  ];
+  let pool = ["ช่วยถามทีละข้อ", "สรุปให้เข้าใจง่าย", "ผมอยากเพิ่มข้อมูลกระเป๋า", "เริ่มจากเรื่องที่สำคัญที่สุด"];
+  if (flowMode === "onboarding") {
+    pool = libraries[onboardingStep] || pool;
+  } else if (lastAiText.includes("หนี้") || lastAiText.includes("จ่าย")) {
+    pool = ["เพิ่มหนี้", "ช่วยจัดลำดับหนี้", "คำนวณยอดโปะเพิ่ม", "ดูภาระต่อเดือน"];
+  } else if (lastAiText.includes("เงินสำรอง") || lastAiText.includes("รายจ่าย")) {
+    pool = ["เพิ่มภาระรายเดือน", "หาเงินรั่ว", "ตั้งเงินสำรอง", "ลดรายจ่ายแบบไม่กดดัน"];
+  } else if (lastAiText.includes("ลงทุน") || lastAiText.includes("asset")) {
+    pool = ["เพิ่ม asset", "ประเมินความเสี่ยง", "เริ่มลงทุนเดือนละน้อย", "ดู net worth"];
+  }
+
+  const aiCount = conversation.filter((message) => message.role === "ai").length;
+  const rotated = [...pool.slice(aiCount % pool.length), ...pool.slice(0, aiCount % pool.length)];
+  return [...new Set(rotated)].slice(0, 3);
+}
+
 function debtSummaryMarkup() {
   const total = profile.debts.reduce((sum, debt) => sum + Number(debt.amount || 0), 0);
   if (!profile.debts.length) {
@@ -706,10 +770,26 @@ function wire() {
   document.querySelector("#walletAssetForm")?.addEventListener("submit", handleWalletAssetSubmit);
   document.querySelectorAll("[data-main-view]").forEach((button) => {
     button.addEventListener("click", () => {
-      view = button.dataset.mainView;
       isHealthOpen = false;
+      if (button.dataset.mainView === "chat") {
+        if (profile.known) enterChat();
+        else enterOnboardingChat();
+      } else {
+        view = "wallet";
+      }
       render();
     });
+  });
+  document.querySelector("[data-action='startChatChoice']")?.addEventListener("click", () => {
+    if (profile.known) enterChat();
+    else enterOnboardingChat();
+    render();
+  });
+  document.querySelector("[data-action='openWalletChoice']")?.addEventListener("click", () => {
+    view = "wallet";
+    walletTab = "overview";
+    resetWalletForms();
+    render();
   });
   document.querySelectorAll("[data-wallet-tab]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -800,6 +880,11 @@ function wire() {
   });
   document.querySelectorAll("[data-delete-asset]").forEach((button) => {
     button.addEventListener("click", () => deleteWalletItem("assets", Number(button.dataset.deleteAsset)));
+  });
+  document.querySelectorAll("[data-suggestion]").forEach((button) => {
+    button.addEventListener("click", () => {
+      handleUserMessage(button.dataset.suggestion);
+    });
   });
   const modeToggle = document.querySelector("#modeToggle");
   if (modeToggle) modeToggle.onclick = toggleViewMode;
@@ -912,7 +997,7 @@ function enterChat(isNew = false) {
     {
       role: "ai",
       text: isNew
-        ? `ยินดีที่ได้รู้จักครับ ${currentUser} ตอนนี้ฉันมีภาพรวมเบื้องต้นแล้ว คุณสามารถเพิ่มหนี้ วางแผนเงินสำรอง หรือเริ่มวางแผนลงทุนแบบค่อยเป็นค่อยไปได้`
+        ? `ยินดีที่ได้รู้จักครับ ${currentUser} ตอนนี้ผมมีภาพรวมเบื้องต้นแล้ว คุณสามารถเพิ่มหนี้ วางแผนเงินสำรอง หรือเริ่มวางแผนลงทุนแบบค่อยเป็นค่อยไปได้`
         : `ยินดีต้อนรับกลับครับ ${currentUser} วันนี้อยากจัดการหนี้ วางแผนเงินสด หรือเริ่มคุยเรื่องลงทุนก่อนดีครับ`,
     },
   ];
@@ -925,7 +1010,7 @@ function enterOnboardingChat() {
   conversation = [
     {
       role: "ai",
-      text: `ยินดีที่ได้รู้จักครับ ${currentUser} ก่อนเริ่มวางแผนการเงิน ฉันขอถามทำความรู้จักทีละข้อในแชทนี้นะครับ`,
+      text: `ยินดีที่ได้รู้จักครับ ${currentUser} ก่อนเริ่มวางแผนการเงิน ผมขอถามทำความรู้จักทีละข้อในแชทนี้นะครับ`,
     },
     {
       role: "ai",
@@ -948,6 +1033,22 @@ function handleUserMessage(text) {
     walletTab = "debt";
     showDebtForm = true;
     editingDebtIndex = null;
+    render();
+    return;
+  }
+  if (text.includes("เพิ่มภาระ") || text.includes("รายเดือน")) {
+    view = "wallet";
+    walletTab = "expenses";
+    showExpenseForm = true;
+    editingExpenseIndex = null;
+    render();
+    return;
+  }
+  if (text.toLowerCase().includes("asset") || text.includes("เพิ่มสินทรัพย์")) {
+    view = "wallet";
+    walletTab = "assets";
+    showAssetForm = true;
+    editingAssetIndex = null;
     render();
     return;
   }
@@ -1041,7 +1142,7 @@ async function completeLoginFromChat() {
     authToast = isNewUser
       ? "สมัครสำเร็จแล้ว Freedom จะเริ่มถามข้อมูลพื้นฐานเพื่อวางแผนการเงิน"
       : "ยืนยันตัวตนสำเร็จ ยินดีต้อนรับกลับครับ";
-    startWhaleIntro(profile.known ? "chat" : "onboarding");
+    startWhaleIntro("postAuth");
   } catch (error) {
     conversation.push({
       role: "ai",
@@ -1065,13 +1166,12 @@ function recoverAuthFlow(error) {
   }, pinEntry);
   users[currentUser] = profile;
   persistUsers();
-  enterOnboardingChat();
   authStep = "username";
   pendingUsername = "";
   pendingUserExists = false;
   pinEntry = "";
   authToast = "ยืนยันตัวตนสำเร็จ และ Freedom เริ่ม onboarding ต่อให้แล้ว";
-  startWhaleIntro("onboarding");
+  startWhaleIntro("postAuth");
 }
 
 function startWhaleIntro(target) {
@@ -1084,13 +1184,15 @@ function startWhaleIntro(target) {
   whaleIntroTimer = setTimeout(() => {
     whaleIntroTimer = null;
     authToast = "";
-    if (whaleIntroTarget === "onboarding") {
-      enterOnboardingChat();
-    } else {
-      enterChat();
-    }
+    enterPostAuthChoice();
     render();
   }, 3800);
+}
+
+function enterPostAuthChoice() {
+  view = "postAuth";
+  flowMode = "normal";
+  isThinking = false;
 }
 
 function handleOnboardingAnswer(text) {
@@ -1122,12 +1224,12 @@ function getOnboardingPrompt() {
 function getOnboardingCompleteMessage() {
   const type = `${profile.onboarding.financialType || ""} ${profile.onboarding.moneyProblem || ""}`;
   if (type.includes("หนี้")) {
-    return `ขอบคุณครับ ${currentUser} ตอนนี้ Freedom รู้จักภาพรวมของคุณแล้ว เพราะคุณมีเรื่องหนี้เกี่ยวข้อง ขั้นต่อไปฉันจะช่วยเพิ่มหนี้และจัดลำดับแผนปลดหนี้ให้เป็นขั้น ๆ`;
+    return `ขอบคุณครับ ${currentUser} ตอนนี้ Freedom รู้จักภาพรวมของคุณแล้ว เพราะคุณมีเรื่องหนี้เกี่ยวข้อง ขั้นต่อไปผมจะช่วยเพิ่มหนี้และจัดลำดับแผนปลดหนี้ให้เป็นขั้น ๆ`;
   }
   if (type.includes("ลงทุน")) {
-    return `ขอบคุณครับ ${currentUser} ตอนนี้ Freedom รู้จักภาพรวมของคุณแล้ว ขั้นต่อไปฉันจะช่วยดูเงินสำรอง ความเสี่ยง และวิธีเริ่มลงทุนแบบไม่กดดัน`;
+    return `ขอบคุณครับ ${currentUser} ตอนนี้ Freedom รู้จักภาพรวมของคุณแล้ว ขั้นต่อไปผมจะช่วยดูเงินสำรอง ความเสี่ยง และวิธีเริ่มลงทุนแบบไม่กดดัน`;
   }
-  return `ขอบคุณครับ ${currentUser} ตอนนี้ Freedom รู้จักภาพรวมของคุณแล้ว ขั้นต่อไปฉันจะช่วยจัดลำดับเงินสด รายจ่าย เงินสำรอง และเป้าหมายระยะยาวให้ชัดขึ้น`;
+  return `ขอบคุณครับ ${currentUser} ตอนนี้ Freedom รู้จักภาพรวมของคุณแล้ว ขั้นต่อไปผมจะช่วยจัดลำดับเงินสด รายจ่าย เงินสำรอง และเป้าหมายระยะยาวให้ชัดขึ้น`;
 }
 
 function submitMessage(text) {
@@ -1249,7 +1351,7 @@ function buildUserContext() {
   const assets = profile.assets.length
     ? profile.assets.map((item) => `${item.type || "asset"} ${item.name}: ${item.value}`).join("; ")
     : "ยังไม่มี asset";
-  return `บริบทผู้ใช้ ${currentUser}: ประเภทเป้าหมาย/ปัญหา ${profile.onboarding.financialType || "-"}, ปัญหาที่กังวล ${profile.onboarding.moneyProblem || "-"}, รายได้ ${profile.onboarding.income || "-"}, เป้าหมาย ${profile.onboarding.goal || "-"}, หนี้: ${debts}. ภาระรายเดือน: ${expenses}. Asset: ${assets}. คุณคือผู้ช่วยการเงินส่วนตัวภาษาไทย ให้ถามทีละข้อแบบไม่ตัดสิน ถ้าผู้ใช้มีหนี้ให้ช่วยจัดลำดับแผนปลดหนี้ก่อน แล้วค่อยต่อยอดเงินสำรองและลงทุน`;
+  return `บริบทผู้ใช้ ${currentUser}: ประเภทเป้าหมาย/ปัญหา ${profile.onboarding.financialType || "-"}, ปัญหาที่กังวล ${profile.onboarding.moneyProblem || "-"}, รายได้ ${profile.onboarding.income || "-"}, เป้าหมาย ${profile.onboarding.goal || "-"}, หนี้: ${debts}. ภาระรายเดือน: ${expenses}. Asset: ${assets}. คุณคือผู้ช่วยการเงินส่วนตัวภาษาไทย เรียกตัวเองว่า "ผม" เสมอ ให้ถามทีละข้อแบบไม่ตัดสิน ถ้าผู้ใช้มีหนี้ให้ช่วยจัดลำดับแผนปลดหนี้ก่อน แล้วค่อยต่อยอดเงินสำรองและลงทุน`;
 }
 
 function getProfileSummary() {
