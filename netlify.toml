@@ -21,6 +21,24 @@
   force = true
 
 [[redirects]]
+  from = "/api/auth/lookup"
+  to = "/.netlify/functions/auth"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/complete"
+  to = "/.netlify/functions/auth"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/profile/save"
+  to = "/.netlify/functions/auth"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

@@ -827,6 +827,46 @@ body[data-mode="desktop"] .whale-media {
   font-size: 18px;
 }
 
+.checkpoint-whale {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.checkpoint-whale-media {
+  position: absolute;
+  inset: 14% -32% 6% -12%;
+  background-image: url("whale.gif");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: right center;
+  opacity: 0;
+  filter: drop-shadow(0 0 28px rgba(80, 240, 173, 0.28));
+  animation: checkpointWhaleSwim 2.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.checkpoint-whale-glow {
+  position: absolute;
+  right: -80px;
+  top: 28%;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(80, 240, 173, 0.28), transparent 62%),
+    radial-gradient(circle at 72% 32%, rgba(73, 232, 255, 0.2), transparent 54%);
+  filter: blur(22px);
+  opacity: 0;
+  animation: checkpointWhaleGlow 2.65s ease both;
+}
+
+body[data-mode="desktop"] .checkpoint-whale-media {
+  inset: 4% -28% -4% 10%;
+  opacity: 0;
+}
+
 .mini-summary {
   display: flex;
   justify-content: space-between;
@@ -1457,6 +1497,20 @@ body[data-mode="desktop"] .health-card {
   0% { opacity: 0; transform: translateY(24px) scale(0.86); }
   60% { opacity: 0.9; }
   100% { opacity: 0.72; transform: translateY(0) scale(1); }
+}
+
+@keyframes checkpointWhaleSwim {
+  0% { opacity: 0; transform: translateX(18%) translateY(22px) scale(0.96); }
+  22% { opacity: 0.18; }
+  72% { opacity: 0.18; }
+  100% { opacity: 0; transform: translateX(-8%) translateY(-10px) scale(1.02); }
+}
+
+@keyframes checkpointWhaleGlow {
+  0% { opacity: 0; transform: scale(0.82); }
+  28% { opacity: 0.62; }
+  80% { opacity: 0.46; }
+  100% { opacity: 0; transform: scale(1.08); }
 }
 
 @keyframes fillBar {

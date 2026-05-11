@@ -1,4 +1,5 @@
 const http = require("node:http");
+const crypto = require("node:crypto");
 const fsSync = require("node:fs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -12,6 +13,7 @@ const GEMINI_MAX_OUTPUT_TOKENS = Number(process.env.GEMINI_MAX_OUTPUT_TOKENS || 
 const GEMINI_THINKING_BUDGET = Number(process.env.GEMINI_THINKING_BUDGET || 0);
 const SUPABASE_TABLE = process.env.SUPABASE_TABLE || "freedom_profiles";
 const ROOT = __dirname;
+const AUTH_STORE_PATH = path.join(ROOT, "auth-store.json");
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -92,6 +94,185 @@ async function readBody(request) {
   const chunks = [];
   for await (const chunk of request) chunks.push(chunk);
   return Buffer.concat(chunks).toString("utf8");
+}
+
+function normalizeUsername(username) {
+  return String(username || "").trim().replace(/\s+/g, "_").slice(0, 24);
+}
+
+function normalizeProfileForStorage(profile) {
+  const safeProfile = profile && typeof profile === "object" ? profile : {};
+  return {
+    ...safeProfile,
+    known: Boolean(safeProfile.known),
+    onboarding: safeProfile.onboarding && typeof safeProfile.onboarding === "object" ? safeProfile.onboarding : {},
+    debts: Array.isArray(safeProfile.debts) ? safeProfile.debts : [],
+    checkpoints: safeProfile.checkpoints && typeof safeProfile.checkpoints === "object" ? safeProfile.checkpoints : {},
+  };
+}
+
+function publicProfile(profile) {
+  const nextProfile = normalizeProfileForStorage(profile);
+  delete nextProfile.pin;
+  delete nextProfile.auth;
+  return nextProfile;
+}
+
+function createPinAuth(pin) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const pinHash = crypto.scryptSync(String(pin), salt, 32).toString("hex");
+  return { salt, pinHash };
+}
+
+function verifyPin(profile, pin) {
+  if (profile?.auth?.salt && profile?.auth?.pinHash) {
+    const expected = Buffer.from(profile.auth.pinHash, "hex");
+    const actual = crypto.scryptSync(String(pin), profile.auth.salt, expected.length);
+    return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+  }
+  return Boolean(profile?.pin && String(profile.pin) === String(pin));
+}
+
+async function loadLocalAuthStore() {
+  try {
+    return JSON.parse(await fs.readFile(AUTH_STORE_PATH, "utf8")) || {};
+  } catch {
+    return {};
+  }
+}
+
+async function saveLocalAuthStore(store) {
+  await fs.writeFile(AUTH_STORE_PATH, `${JSON.stringify(store, null, 2)}\n`);
+}
+
+function supabaseHeaders(extra = {}) {
+  return {
+    apikey: process.env.SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+    ...extra,
+  };
+}
+
+function isSupabaseConfigured() {
+  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY);
+}
+
+async function getStoredProfile(username) {
+  if (isSupabaseConfigured()) {
+    const url = `${process.env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?username=eq.${encodeURIComponent(username)}&select=username,profile&limit=1`;
+    const response = await fetch(url, {
+      headers: supabaseHeaders({ Accept: "application/json" }),
+    });
+    if (!response.ok) throw new Error(`Supabase profile lookup failed (${response.status})`);
+    const rows = await response.json();
+    return rows?.[0]?.profile ? normalizeProfileForStorage(rows[0].profile) : null;
+  }
+
+  const store = await loadLocalAuthStore();
+  return store[username] ? normalizeProfileForStorage(store[username]) : null;
+}
+
+async function upsertStoredProfile(username, profile) {
+  const nextProfile = normalizeProfileForStorage(profile);
+  if (isSupabaseConfigured()) {
+    const url = `${process.env.SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?on_conflict=username`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: supabaseHeaders({ Prefer: "resolution=merge-duplicates" }),
+      body: JSON.stringify({
+        username,
+        profile: nextProfile,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+    if (!response.ok) throw new Error(`Supabase profile upsert failed (${response.status})`);
+    return nextProfile;
+  }
+
+  const store = await loadLocalAuthStore();
+  store[username] = nextProfile;
+  await saveLocalAuthStore(store);
+  return nextProfile;
+}
+
+async function handleAuthLookup(request, response) {
+  try {
+    const body = JSON.parse(await readBody(request));
+    const username = normalizeUsername(body.username);
+    if (!username) {
+      sendJson(response, 400, { error: "กรุณาใส่ username" });
+      return;
+    }
+    const storedProfile = await getStoredProfile(username);
+    sendJson(response, 200, { ok: true, exists: Boolean(storedProfile) });
+  } catch (error) {
+    sendJson(response, 500, { error: "backend auth ตรวจสอบ username ไม่สำเร็จ", detail: error.message });
+  }
+}
+
+async function handleAuthComplete(request, response) {
+  try {
+    const body = JSON.parse(await readBody(request));
+    const username = normalizeUsername(body.username);
+    const pin = String(body.pin || "");
+    if (!username || !/^\d{6}$/.test(pin)) {
+      sendJson(response, 400, { error: "กรุณาใส่ username และ PIN 6 หลัก" });
+      return;
+    }
+
+    const storedProfile = await getStoredProfile(username);
+    if (storedProfile) {
+      if (!verifyPin(storedProfile, pin)) {
+        sendJson(response, 401, { error: "PIN ไม่ถูกต้อง" });
+        return;
+      }
+      if (!storedProfile.auth?.pinHash) {
+        const migratedProfile = { ...storedProfile, auth: createPinAuth(pin) };
+        delete migratedProfile.pin;
+        await upsertStoredProfile(username, migratedProfile);
+        sendJson(response, 200, { ok: true, exists: true, profile: publicProfile(migratedProfile) });
+        return;
+      }
+      sendJson(response, 200, { ok: true, exists: true, profile: publicProfile(storedProfile) });
+      return;
+    }
+
+    const newProfile = normalizeProfileForStorage({
+      known: false,
+      onboarding: {},
+      debts: [],
+      checkpoints: {},
+      auth: createPinAuth(pin),
+    });
+    await upsertStoredProfile(username, newProfile);
+    sendJson(response, 200, { ok: true, exists: false, profile: publicProfile(newProfile) });
+  } catch (error) {
+    sendJson(response, 500, { error: "backend auth ตรวจสอบ PIN ไม่สำเร็จ", detail: error.message });
+  }
+}
+
+async function handleProfileSave(request, response) {
+  try {
+    const body = JSON.parse(await readBody(request));
+    const username = normalizeUsername(body.username);
+    if (!username) {
+      sendJson(response, 400, { error: "กรุณาใส่ username" });
+      return;
+    }
+
+    const existingProfile = await getStoredProfile(username);
+    const nextProfile = normalizeProfileForStorage({
+      ...(existingProfile || {}),
+      ...(body.profile || {}),
+      auth: existingProfile?.auth,
+    });
+    delete nextProfile.pin;
+    await upsertStoredProfile(username, nextProfile);
+    sendJson(response, 200, { ok: true, profile: publicProfile(nextProfile) });
+  } catch (error) {
+    sendJson(response, 500, { error: "บันทึก profile ผ่าน backend ไม่สำเร็จ", detail: error.message });
+  }
 }
 
 function sendGeminiSetupPage(response, message = "") {
@@ -284,6 +465,21 @@ const server = http.createServer(async (request, response) => {
       geminiConfigured: Boolean(getGeminiApiKey()),
       supabaseConfigured: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
     });
+    return;
+  }
+
+  if (request.method === "POST" && request.url === "/api/auth/lookup") {
+    await handleAuthLookup(request, response);
+    return;
+  }
+
+  if (request.method === "POST" && request.url === "/api/auth/complete") {
+    await handleAuthComplete(request, response);
+    return;
+  }
+
+  if (request.method === "POST" && request.url === "/api/profile/save") {
+    await handleProfileSave(request, response);
     return;
   }
 

@@ -79,6 +79,7 @@ let view = "login";
 let flowMode = "normal";
 let authStep = "username";
 let pendingUsername = "";
+let pendingUserExists = false;
 let pinEntry = "";
 let onboardingStep = 0;
 let conversation = initialAuthConversation();
@@ -89,6 +90,8 @@ let viewMode = loadViewMode();
 let isHealthOpen = false;
 let whaleIntroTarget = "chat";
 let whaleIntroTimer = null;
+let checkpointWhaleTimer = null;
+let showCheckpointWhale = false;
 let supabaseClient = null;
 let supabaseTable = "freedom_profiles";
 let storageStatus = "local";
@@ -97,13 +100,17 @@ let profileTab = "health";
 function render() {
   updateChrome();
   document.querySelector("#appContent").innerHTML = getViewMarkup();
-  document.querySelector("#overlayLayer").innerHTML = isHealthOpen ? financialHealthModalMarkup() : "";
+  document.querySelector("#overlayLayer").innerHTML = getOverlayMarkup();
   const chatDock = document.querySelector("#chatDock");
   const canType = view === "chat" || (view === "login" && authStep === "username");
   chatDock.hidden = !canType;
   chatDock.innerHTML = canType ? getComposerMarkup() : "";
   wire();
   keepChatAtBottom();
+}
+
+function getOverlayMarkup() {
+  return `${isHealthOpen ? financialHealthModalMarkup() : ""}${showCheckpointWhale ? checkpointWhaleMarkup() : ""}`;
 }
 
 function updateChrome() {
@@ -155,6 +162,15 @@ function whaleIntroMarkup() {
         <p class="muted">${whaleIntroTarget === "onboarding" ? "อีกสักครู่จะเริ่มถามคำถามแรกในแชท" : "อีกสักครู่จะพาคุณกลับเข้าสู่แชทการเงินส่วนตัว"}</p>
       </div>
     </article>
+  `;
+}
+
+function checkpointWhaleMarkup() {
+  return `
+    <div class="checkpoint-whale" aria-hidden="true">
+      <div class="checkpoint-whale-glow"></div>
+      <div class="checkpoint-whale-media"></div>
+    </div>
   `;
 }
 
@@ -396,10 +412,9 @@ function getReplyIcon(reply) {
 }
 
 function pinPadMarkup() {
-  const isReturningUser = Boolean(users[pendingUsername]);
   return `
     <section class="glass pin-panel" aria-label="ปุ่มตัวเลข PIN จาก Freedom">
-      <p class="label">${isReturningUser ? "ใส่ PIN เดิม" : "ตั้ง PIN ใหม่"} 6 หลัก</p>
+      <p class="label">${pendingUserExists ? "ใส่ PIN เดิม" : "ตั้ง PIN ใหม่"} 6 หลัก</p>
       <div class="pin-dots" aria-label="กรอกแล้ว ${pinEntry.length} หลัก">
         ${Array.from({ length: 6 }, (_, index) => `<span class="${index < pinEntry.length ? "filled" : ""}"></span>`).join("")}
       </div>
@@ -514,24 +529,37 @@ function handleUserMessage(text) {
   submitMessage(text);
 }
 
-function handleUsernameMessage(text) {
+async function handleUsernameMessage(text) {
   const username = text.trim().replace(/\s+/g, "_").slice(0, 24);
   if (!username) return;
-  const existing = users[username];
   pendingUsername = username;
-  authStep = "pin";
   pinEntry = "";
   conversation.push({ role: "user", text: username });
-  conversation.push({
-    role: "ai",
-    text: existing
-      ? `เจอสมาชิก "${username}" แล้วครับ ใส่ PIN ที่เคยตั้งไว้เพื่อกลับเข้าใช้งาน`
-      : `ยังไม่พบชื่อ "${username}" ครับ ถือว่าเป็นการสมัครใหม่ ตั้ง PIN 6 หลักจากปุ่มตัวเลขด้านล่างได้เลย`,
-  });
+  conversation.push({ role: "ai", text: `กำลังตรวจสอบ username "${username}" ผ่าน backend สักครู่ครับ` });
+  render();
+
+  try {
+    const result = await authLookup(username);
+    pendingUserExists = Boolean(result.exists);
+    authStep = "pin";
+    conversation.push({
+      role: "ai",
+      text: pendingUserExists
+        ? `เจอสมาชิก "${username}" แล้วครับ ใส่ PIN 6 หลักที่เคยตั้งไว้เพื่อกลับเข้าใช้งาน`
+        : `ยังไม่พบชื่อ "${username}" ครับ ถือว่าเป็นการสมัครใหม่ ตั้ง PIN 6 หลักจากปุ่มตัวเลขด้านล่างได้เลย`,
+    });
+  } catch (error) {
+    pendingUsername = "";
+    pendingUserExists = false;
+    conversation.push({
+      role: "ai",
+      text: `ตอนนี้ backend auth ยังตรวจสอบ username ไม่สำเร็จครับ (${error.message})`,
+    });
+  }
   render();
 }
 
-function handlePinKey(key) {
+async function handlePinKey(key) {
   if (key === "ล้าง") {
     pinEntry = "";
     updatePinDots();
@@ -548,7 +576,7 @@ function handlePinKey(key) {
   updatePinDots();
   if (pinEntry.length === 6) {
     try {
-      completeLoginFromChat();
+      await completeLoginFromChat();
     } catch (error) {
       recoverAuthFlow(error);
     }
@@ -567,36 +595,38 @@ function updatePinDots() {
   }
 }
 
-function completeLoginFromChat() {
-  const existing = users[pendingUsername];
-  if (existing && existing.pin !== pinEntry) {
+async function completeLoginFromChat() {
+  try {
+    const result = await authComplete(pendingUsername, pinEntry);
+    currentUser = pendingUsername;
+    const isNewUser = !result.exists;
+    profile = normalizeProfile(result.profile || {
+      known: false,
+      onboarding: {},
+      debts: [],
+      checkpoints: {},
+    });
+    users[currentUser] = profile;
+    persistUsers();
+
+    authStep = "username";
+    pendingUsername = "";
+    pendingUserExists = false;
+    pinEntry = "";
+    authToast = isNewUser
+      ? "สมัครสำเร็จแล้ว Freedom จะเริ่มถามข้อมูลพื้นฐานเพื่อวางแผนการเงิน"
+      : "ยืนยันตัวตนสำเร็จ ยินดีต้อนรับกลับครับ";
+    startWhaleIntro(profile.known ? "chat" : "onboarding");
+  } catch (error) {
     conversation.push({
       role: "ai",
-      text: "PIN ไม่ตรงกับ username นี้ครับ ถ้าเป็นสมาชิกเดิมให้ใช้ PIN ที่เคยตั้งไว้ หรือลองใช้ username ใหม่เพื่อเริ่มสมัครใหม่",
+      text: error.status === 401
+        ? "PIN ไม่ตรงกับ username นี้ครับ ลองใส่ PIN 6 หลักอีกครั้งได้เลย"
+        : `backend auth ตรวจสอบ PIN ไม่สำเร็จครับ (${error.message})`,
     });
     pinEntry = "";
     render();
-    return;
   }
-
-  currentUser = pendingUsername;
-  const isNewUser = !existing;
-  profile = normalizeProfile(existing || {
-    pin: pinEntry,
-    known: false,
-    onboarding: {},
-    debts: [],
-  }, pinEntry);
-  users[currentUser] = profile;
-  persistUsers();
-
-  authStep = "username";
-  pendingUsername = "";
-  pinEntry = "";
-  authToast = isNewUser
-    ? "สมัครสำเร็จแล้ว Freedom จะเริ่มถามข้อมูลพื้นฐานเพื่อวางแผนการเงิน"
-    : "ยืนยันตัวตนสำเร็จ ยินดีต้อนรับกลับครับ";
-  startWhaleIntro(profile.known ? "chat" : "onboarding");
 }
 
 function recoverAuthFlow(error) {
@@ -613,6 +643,7 @@ function recoverAuthFlow(error) {
   enterOnboardingChat();
   authStep = "username";
   pendingUsername = "";
+  pendingUserExists = false;
   pinEntry = "";
   authToast = "ยืนยันตัวตนสำเร็จ และ Freedom เริ่ม onboarding ต่อให้แล้ว";
   startWhaleIntro("onboarding");
@@ -677,7 +708,10 @@ function getOnboardingCompleteMessage() {
 function submitMessage(text) {
   conversation.push({ role: "user", text });
   const checkpointUpdated = updateFinancialCheckpoints(text);
-  if (checkpointUpdated) saveUsers();
+  if (checkpointUpdated) {
+    saveUsers();
+    triggerCheckpointWhale();
+  }
   isThinking = true;
   render();
   keepChatAtBottom();
@@ -691,6 +725,16 @@ function submitMessage(text) {
       isThinking = false;
       render();
     });
+}
+
+function triggerCheckpointWhale() {
+  showCheckpointWhale = true;
+  if (checkpointWhaleTimer) clearTimeout(checkpointWhaleTimer);
+  checkpointWhaleTimer = setTimeout(() => {
+    showCheckpointWhale = false;
+    checkpointWhaleTimer = null;
+    render();
+  }, 2800);
 }
 
 async function askBackend() {
@@ -719,6 +763,54 @@ async function askBackend() {
   }
 
   return data.reply || "ขอโทษครับ ตอนนี้ AI ยังไม่มีคำตอบ ลองส่งข้อความอีกครั้งได้ไหม";
+}
+
+async function authLookup(username) {
+  return fetchJson("/api/auth/lookup", { action: "lookup", username });
+}
+
+async function authComplete(username, pin) {
+  return fetchJson("/api/auth/complete", { action: "complete", username, pin });
+}
+
+async function saveProfileToBackend() {
+  if (!currentUser || !profile) return;
+  try {
+    await fetchJson("/api/profile/save", {
+      action: "save",
+      username: currentUser,
+      profile,
+    });
+  } catch (error) {
+    console.error("Backend profile save failed", error);
+  }
+}
+
+async function fetchJson(path, payload) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    const error = new Error(`backend ส่งคำตอบกลับมาไม่ถูกต้อง (${response.status})`);
+    error.status = response.status;
+    throw error;
+  }
+
+  if (!response.ok) {
+    const error = new Error(data.error || "backend ตอบกลับไม่สำเร็จ");
+    error.status = response.status;
+    throw error;
+  }
+
+  return data;
 }
 
 function buildUserContext() {
@@ -927,6 +1019,7 @@ function resetChat() {
     view = "login";
     authStep = "username";
     pendingUsername = "";
+    pendingUserExists = false;
     pinEntry = "";
     authToast = "";
     conversation = initialAuthConversation();
@@ -951,6 +1044,7 @@ function resetTestData() {
   flowMode = "normal";
   authStep = "username";
   pendingUsername = "";
+  pendingUserExists = false;
   pinEntry = "";
   authToast = "";
   onboardingStep = 0;
@@ -1013,6 +1107,7 @@ function persistUsers() {
   } catch (error) {
     console.error("Could not persist users", error);
   }
+  saveProfileToBackend();
   syncCurrentProfileToSupabase();
 }
 
@@ -1024,46 +1119,17 @@ async function initSupabaseStorage() {
       storageStatus = "local";
       return;
     }
-    if (!window.supabase?.createClient) {
-      throw new Error("Supabase client ยังโหลดไม่สำเร็จ");
-    }
-
     supabaseTable = config.supabaseTable || supabaseTable;
-    supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-    const { data, error } = await supabaseClient
-      .from(supabaseTable)
-      .select("username, profile");
-
-    if (error) throw error;
-
-    users = {
-      ...users,
-      ...Object.fromEntries((data || []).map((row) => [row.username, normalizeProfile(row.profile)])),
-    };
-    storageStatus = "supabase";
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+    storageStatus = "backend";
     render();
   } catch (error) {
-    console.error("Supabase storage fallback to localStorage", error);
+    console.error("Backend storage status fallback to localStorage", error);
     storageStatus = "local";
   }
 }
 
 function syncCurrentProfileToSupabase() {
-  if (!supabaseClient || !currentUser || !profile) return;
-  supabaseClient
-    .from(supabaseTable)
-    .upsert(
-      {
-        username: currentUser,
-        profile,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "username" },
-    )
-    .then(({ error }) => {
-      if (error) console.error("Supabase sync failed", error);
-    });
+  return;
 }
 
 function normalizeProfile(storedProfile, fallbackPin = "") {
@@ -1095,7 +1161,7 @@ async function refreshStatus() {
       ? `เชื่อมต่อ AI หลังบ้านแล้ว · ${data.model}`
       : "เชื่อม backend แล้ว · รอ GEMINI_API_KEY";
     if (data.supabaseConfigured) {
-      aiStatus += storageStatus === "supabase" ? " · Supabase พร้อม" : " · กำลังเชื่อม Supabase";
+      aiStatus += storageStatus === "backend" ? " · Backend auth พร้อม" : " · กำลังเชื่อม backend auth";
     }
   } catch {
     aiStatus = "ยังตรวจสอบ backend ไม่สำเร็จ";
