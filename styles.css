@@ -1470,7 +1470,10 @@ body[data-mode="desktop"] .health-card {
 
 .advisor-focus {
   position: relative;
-  overflow: hidden;
+  align-items: stretch;
+  min-height: max-content;
+  overflow: visible;
+  padding: 14px;
   border-color: color-mix(in srgb, var(--level-color) 42%, transparent);
   background:
     radial-gradient(circle at top right, color-mix(in srgb, var(--level-color) 22%, transparent), transparent 38%),
@@ -1484,9 +1487,20 @@ body[data-mode="desktop"] .health-card {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.advisor-focus > p:not(.label) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
 }
 
 .advisor-suggest-icon {
+  flex: 0 0 30px;
   display: grid;
   place-items: center;
   width: 30px;
