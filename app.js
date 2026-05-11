@@ -1389,31 +1389,16 @@ function getWalletStats() {
 }
 
 function getFinancialHealth() {
-  const progress = getKnowingPercent();
-  if (!profile || progress < 50) {
-    return healthLevelData("Survival", progress);
+  const levels = ["Survival", "Recovery", "Balance", "Growth", "Freedom", "Legacy"];
+  for (const level of levels) {
+    const health = healthLevelData(level);
+    const completedCount = health.completedConditions.filter(Boolean).length;
+    if (completedCount < health.conditions.length || level === "Legacy") return health;
   }
-
-  const onboarding = profile.onboarding || {};
-  const income = Number(onboarding.income || 0);
-  const debtTotal = profile.debts.reduce((sum, debt) => sum + Number(debt.amount || 0), 0);
-  const minimumPayment = profile.debts.reduce((sum, debt) => sum + Number(debt.min || 0), 0);
-  const debtBurden = income ? minimumPayment / income : debtTotal ? 1 : 0;
-  const text = `${onboarding.financialType || ""} ${onboarding.moneyProblem || ""} ${onboarding.goal || ""}`;
-  const hasDebtSignal = debtTotal > 0 || text.includes("หนี้") || text.includes("ขั้นต่ำ");
-  const hasInvestSignal = text.includes("ลงทุน");
-  const hasReserveSignal = text.includes("สำรอง");
-
-  if (income >= 120000 && hasInvestSignal && hasReserveSignal && !hasDebtSignal) return healthLevelData("Legacy", 100);
-  if (income >= 80000 && hasInvestSignal && hasReserveSignal && debtBurden < 0.05) return healthLevelData("Freedom", 92);
-  if (income >= 45000 && (hasInvestSignal || hasReserveSignal) && debtBurden < 0.1) return healthLevelData("Growth", 78 + Math.min(progress / 5, 14));
-  if (hasDebtSignal && (debtTotal === 0 || debtBurden > 0.25)) return healthLevelData("Survival", 18 + Math.min(progress, 35));
-  if (hasDebtSignal && debtBurden > 0.1) return healthLevelData("Recovery", 38 + Math.min(progress / 4, 20));
-  if (hasDebtSignal || income > 0) return healthLevelData("Balance", 58 + Math.min(progress / 5, 18));
-  return healthLevelData("Recovery", 42 + Math.min(progress / 4, 20));
+  return healthLevelData("Legacy");
 }
 
-function healthLevelData(level, progress) {
+function healthLevelData(level) {
   const data = {
     Survival: {
       level: "Survival Mode",
@@ -1497,9 +1482,11 @@ function healthLevelData(level, progress) {
   const health = data[level];
   const completedConditions = getCompletedConditions(health.slug, health.conditions.length);
   const completedCount = completedConditions.filter(Boolean).length;
-  const checkpointBoost = completedCount * 8;
+  const progress = health.conditions.length
+    ? Math.round((completedCount / health.conditions.length) * 100)
+    : 0;
   return {
-    progress: Math.max(0, Math.min(100, Math.round(progress + checkpointBoost))),
+    progress: Math.max(0, Math.min(100, progress)),
     completedConditions,
     ...health,
   };
@@ -1549,7 +1536,7 @@ function getFinancialProfileLines() {
     { label: "ปัญหาที่กังวล", value: onboarding.moneyProblem || "ยังไม่ระบุ" },
     { label: "รายได้ต่อเดือน", value: onboarding.income ? `฿${Number(onboarding.income).toLocaleString("th-TH")}` : "ยังไม่ระบุ" },
     { label: "หนี้ที่บันทึก", value: debtTotal ? `฿${debtTotal.toLocaleString("th-TH")} / ขั้นต่ำ ฿${minimumPayment.toLocaleString("th-TH")}` : "ยังไม่มีรายการหนี้" },
-    { label: "ข้อมูลประเมิน", value: `${getKnowingPercent()}%` },
+    { label: "ความคืบหน้า mission", value: `${getFinancialHealth().progress}%` },
   ];
 }
 
