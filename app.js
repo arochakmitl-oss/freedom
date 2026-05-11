@@ -244,7 +244,7 @@ function profileHealthTabMarkup(health, profileLines) {
     </section>
     <section class="health-block ocean-journey-block advisor-focus" style="--level-color: ${health.color}">
       <div class="advisor-focus-title">
-        <span class="advisor-suggest-icon">${iconMarkup("aiSuggest")}</span>
+        <span class="advisor-suggest-icon">${iconMarkup("fourStar")}</span>
         <p class="label">AI adviser focus</p>
       </div>
       <p>${escapeHtml(health.adviserFocus)}</p>
@@ -690,21 +690,28 @@ function debtMarkup() {
 }
 
 function fieldMarkup(id, label, placeholder, type) {
+  const attrs = inputAttrs(type);
   return `
     <div class="field">
       <label for="${id}">${label}</label>
-      <input id="${id}" type="${type}" placeholder="${placeholder}" required />
+      <input id="${id}" ${attrs} placeholder="${placeholder}" required />
     </div>
   `;
 }
 
 function fieldMarkupWithValue(id, label, placeholder, type, value) {
+  const attrs = inputAttrs(type);
   return `
     <div class="field">
       <label for="${id}">${label}</label>
-      <input id="${id}" type="${type}" placeholder="${placeholder}" value="${escapeHtml(value)}" required />
+      <input id="${id}" ${attrs} placeholder="${placeholder}" value="${escapeHtml(value)}" required />
     </div>
   `;
+}
+
+function inputAttrs(type) {
+  if (type !== "number") return `type="${type}"`;
+  return `type="text" inputmode="decimal" autocomplete="off" data-number-input="true"`;
 }
 
 function getComposerMarkup() {
@@ -721,6 +728,9 @@ function getComposerMarkup() {
 function iconMarkup(name) {
   if (name === "grid") {
     return `<span class="grid-glyph ui-icon" aria-hidden="true"><span></span><span></span><span></span><span></span></span>`;
+  }
+  if (name === "fourStar") {
+    return `<span class="four-star ui-icon" aria-hidden="true"></span>`;
   }
   const icons = {
     phone: "hgi-smart-phone-01",
@@ -912,9 +922,9 @@ function handleDebt(event) {
   event.preventDefault();
   const debt = {
     name: document.querySelector("#debtName").value.trim(),
-    amount: Number(document.querySelector("#debtAmount").value),
-    rate: Number(document.querySelector("#debtRate").value),
-    min: Number(document.querySelector("#debtMin").value),
+    amount: readNumberInput("#debtAmount"),
+    rate: readNumberInput("#debtRate"),
+    min: readNumberInput("#debtMin"),
   };
   profile.debts.push(debt);
   saveUsers();
@@ -930,9 +940,9 @@ function handleWalletDebtSubmit(event) {
   event.preventDefault();
   const debt = {
     name: document.querySelector("#walletDebtName").value.trim(),
-    amount: Number(document.querySelector("#walletDebtAmount").value),
-    rate: Number(document.querySelector("#walletDebtRate").value),
-    min: Number(document.querySelector("#walletDebtMin").value),
+    amount: readNumberInput("#walletDebtAmount"),
+    rate: readNumberInput("#walletDebtRate"),
+    min: readNumberInput("#walletDebtMin"),
   };
   if (editingDebtIndex !== null) {
     profile.debts[editingDebtIndex] = debt;
@@ -949,7 +959,7 @@ function handleWalletExpenseSubmit(event) {
   event.preventDefault();
   const item = {
     name: document.querySelector("#walletExpenseName").value.trim(),
-    amount: Number(document.querySelector("#walletExpenseAmount").value),
+    amount: readNumberInput("#walletExpenseAmount"),
   };
   if (editingExpenseIndex !== null) {
     profile.expenses[editingExpenseIndex] = item;
@@ -967,7 +977,7 @@ function handleWalletAssetSubmit(event) {
   const item = {
     name: document.querySelector("#walletAssetName").value.trim(),
     type: document.querySelector("#walletAssetType").value,
-    value: Number(document.querySelector("#walletAssetValue").value),
+    value: readNumberInput("#walletAssetValue"),
   };
   if (editingAssetIndex !== null) {
     profile.assets[editingAssetIndex] = item;
@@ -978,6 +988,21 @@ function handleWalletAssetSubmit(event) {
   editingAssetIndex = null;
   saveUsers();
   render();
+}
+
+function readNumberInput(selector) {
+  const value = document.querySelector(selector)?.value || "";
+  return parseNumberInput(value);
+}
+
+function parseNumberInput(value) {
+  const thaiDigits = "๐๑๒๓๔๕๖๗๘๙";
+  const normalized = String(value)
+    .replace(/[๐-๙]/g, (digit) => String(thaiDigits.indexOf(digit)))
+    .replace(/,/g, "")
+    .replace(/[^\d.-]/g, "");
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : 0;
 }
 
 function deleteWalletItem(collection, index) {

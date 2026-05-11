@@ -901,6 +901,28 @@ body[data-chat="hidden"] .content {
   box-shadow: 0 0 8px rgba(80, 240, 173, 0.18);
 }
 
+.four-star {
+  position: relative;
+  display: block;
+  width: 18px;
+  height: 18px;
+  color: var(--emerald);
+  filter: drop-shadow(0 0 8px rgba(80, 240, 173, 0.4));
+}
+
+.four-star::before,
+.four-star::after {
+  content: "";
+  position: absolute;
+  inset: 1px 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.four-star::after {
+  transform: rotate(90deg);
+}
+
 .wallet-content {
   display: grid;
   gap: 12px;
@@ -1472,15 +1494,27 @@ body[data-mode="desktop"] .health-card {
   position: relative;
   align-items: stretch;
   min-height: max-content;
-  overflow: visible;
+  overflow: hidden;
+  margin-bottom: 10px;
   padding: 14px;
-  border-color: color-mix(in srgb, var(--level-color) 42%, transparent);
+  border-color: rgba(80, 240, 173, 0.46);
   background:
-    radial-gradient(circle at top right, color-mix(in srgb, var(--level-color) 22%, transparent), transparent 38%),
+    radial-gradient(circle at top right, rgba(80, 240, 173, 0.24), transparent 42%),
     linear-gradient(145deg, rgba(80, 240, 173, 0.12), rgba(255, 255, 255, 0.065));
   box-shadow:
-    0 0 26px color-mix(in srgb, var(--level-color) 18%, transparent),
+    0 0 28px rgba(80, 240, 173, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.advisor-focus::after {
+  content: "";
+  position: absolute;
+  inset: auto 18px -22px 18px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(80, 240, 173, 0.18);
+  filter: blur(18px);
+  pointer-events: none;
 }
 
 .advisor-focus-title {
@@ -1506,14 +1540,19 @@ body[data-mode="desktop"] .health-card {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  color: var(--level-color);
-  background: color-mix(in srgb, var(--level-color) 16%, transparent);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--level-color) 24%, transparent);
+  color: var(--emerald);
+  background: rgba(80, 240, 173, 0.16);
+  box-shadow: 0 0 18px rgba(80, 240, 173, 0.26);
 }
 
-.advisor-suggest-icon .ui-icon {
+.advisor-suggest-icon .ui-icon,
+.advisor-suggest-icon .four-star {
   width: 17px;
   height: 17px;
+}
+
+.advisor-focus + .primary {
+  margin-top: 8px;
 }
 
 .health-row {
